@@ -5,6 +5,7 @@ import logging
 import os.path
 import sys
 
+import matplotlib.pyplot as mpl
 from datetime import datetime
 from matplotlib.pyplot import figure, ion, pause
 from numpy import abs, arange, exp, log10, pi, sqrt
@@ -131,15 +132,16 @@ class HistogramPanel(Panel):
 				bar.set_width(self._bin_width)
 				bar.set_color(self._color)
 
+
 		# If fractions should be shown as annotations
 		if self._annotate_fractions:
 			if not hasattr(self, "_annotates"):
 				self._annotates = []
 				for b, new_height in zip(self._data_b, self._data_h):
-					self._annotates.append(self._axes.annotate("{0:.1f}%".format(new_height*100.0), xy=(b-0.5, 0.1)))
+					self._annotates.append(self._axes.annotate("{0:.1f}".format(new_height*100.0), xy=(b-0.4, 0.1)))
 			else:
 				for an, b, new_height in zip(self._annotates, self._data_b, self._data_h):
-					an.set_text("{0:.1f}%".format(new_height*100.0))
+					an.set_text("{0:.1f}".format(new_height*100.0))
 
 		# Update
 		for b, new_height, bar in zip(self._data_b, self._data_h, self._bars):
@@ -298,29 +300,33 @@ class TextInfoPanel(Panel):
 		# Build lines to display
 		lines = []
 		# Add some spacing
-		for ii in range(3):
+		for ii in range(1):
 			lines.append(" ")
 		# Display R2DBE hostname
 		lines.append("R2DBE host: {0}".format(self._r2dbe_host))
 		# Add a break
-		lines.append("_________________________________________________")
+		lines.append("_____________________")
 		# Add some spacing
-		for ii in range(2):
+		for ii in range(1):
 			lines.append(" ")
 		# Display current time
 		time_name = self._build_name(R2DBE_GROUP_TIME, R2DBE_ATTR_TIME_NOW)
 		time_str = values[time_name]
-		lines.append("Current time: {0}".format(time_str))
+		lines.append("Current time:")
+		lines.append("-------------")
+		lines.append(time_str)
 		# Display external PPS vs internal PPS offset
 		pps_clk_off_name = self._build_name(R2DBE_GROUP_TIME, R2DBE_ATTR_TIME_GPS_PPS_OFFSET_CYCLE)
 		pps_clk_off_str = values[pps_clk_off_name]
 		pps_sec_off_name = self._build_name(R2DBE_GROUP_TIME, R2DBE_ATTR_TIME_GPS_PPS_OFFSET_TIME)
 		pps_sec_off_str = values[pps_sec_off_name]
-		lines.append("External vs internal PPS offset is:")
-		lines.append("              {clk} cycles @ FPGA clock rate".format(clk=pps_clk_off_str))
-		lines.append("              {sec:.2f} ns".format(sec=pps_sec_off_str / 1e-9))
+		lines.append(" ")
+		lines.append("PPS offset (ext. vs. int.):")
+		lines.append("---------------------------")
+		lines.append("{clk} cycles @ FPGA clock rate".format(clk=pps_clk_off_str))
+		lines.append("{sec:.2f} ns".format(sec=pps_sec_off_str / 1e-9))
 		# Add some spacing
-		for ii in range(2):
+		for ii in range(1):
 			lines.append(" ")
 		# Per-input lines
 		for inp in R2DBE_INPUTS:
@@ -336,21 +342,25 @@ class TextInfoPanel(Panel):
 			stid_str = values[stid_name]
 			lines.append("IF{inp}:".format(inp=inp))
 			lines.append("----")
-			lines.append("Pol={pol}, Rx={rx}, BDC={bdc}, Station={stid}".format(pol=pol_str, rx=rx_str, bdc=bdc_str, stid=stid_str))
+			lines.append("Pol={pol}".format(pol=pol_str))
+			lines.append("Rx={rx}".format(rx=rx_str))
+			lines.append("BDC={bdc}".format(bdc=bdc_str))
+			lines.append("Station={stid}".format(stid=stid_str))
+			#lines.apppend(, BDC={bdc}, Station={stid}".format(pol=pol_str, rx=rx_str, bdc=bdc_str, stid=stid_str))
 			# 2-bit quantization threshold
 			th_name = self._build_name(R2DBE_GROUP_SNAP, R2DBE_ATTR_SNAP_2BIT_THRESHOLD, R2DBE_ARG_SNAP_2BIT_THRESHOLD % inp)
 			th_str = values[th_name]
 			lines.append("2-bit threshold = {0}".format(th_str))
 			# Add some spacing between channels
-			for ii in range(5):
+			for ii in range(1):
 				lines.append(" ")
 		# Add some more spacing
-		for ii in range(14):
+		for ii in range(12):
 			lines.append(" ")
 
 		if not hasattr(self, "_annotates"):
 			self._annotates = []
-			dy = 1.0 * self._full_y / len(lines)
+			dy = 1.0 * self._full_y / len(lines)+0.01
 			x0 = self._left_x + self._full_x / 20.0
 			for ii, line in enumerate(lines):
 				y = self._top_y - (ii + 0.5)*dy
@@ -374,13 +384,16 @@ class DisplayR2dbeMonitor(object):
 		self._redis = redis_source
 
 		# Create figure
-		self._fig = figure()
+		self._fig = figure(figsize=(7.5,4.5))
+		self._fig.canvas.set_window_title("{host} monitor".format(host=r2dbe_host))
+
+		mpl.rcParams['font.size'] = 8
 
 		# Register close handler
 		self._fig.canvas.mpl_connect('close_event', handle_close)
 
 		# Adjust subplot parameters
-		self._fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95, wspace=None, hspace=None)
+		self._fig.subplots_adjust(left=0.08, bottom=0.10, right=0.99, top=0.95, wspace=0.45, hspace=0.35)
 
 		# Set layout
 		self._rows = rows
@@ -493,7 +506,7 @@ if __name__ == "__main__":
 		  arg=R2DBE_ARG_SNAP_8BIT_COUNTS % inp)
 		title_str = "{attr}:{arg}".format(attr=R2DBE_ATTR_SNAP_8BIT_COUNTS, arg=R2DBE_ARG_SNAP_8BIT_COUNTS % inp)
 		panel_8bit = drm.add_panel(drm.next_order, HistogramPanel, key_b, key_h, color=_color_map[ii], title=title_str,
-		  xlabel="Sample state", ylabel="Fraction", xticks=[-128, -64, 0, 64, 127], ylim=(0.0, 0.05))
+		  xlabel="Sample state", ylabel="Fraction [%]", xticks=[-128, -64, 0, 64, 127], ylim=(0.0, 0.05))
 		panel_8bit.plot(x_gauss, y_gauss, color=[0.5,0.5,0.5])
 
 	# Add 8-bit spectral density panel
@@ -519,7 +532,7 @@ if __name__ == "__main__":
 		  arg=R2DBE_ARG_SNAP_2BIT_COUNTS % inp)
 		title_str = "{attr}:{arg}".format(attr=R2DBE_ATTR_SNAP_2BIT_COUNTS, arg=R2DBE_ARG_SNAP_2BIT_COUNTS % inp)
 		drm.add_panel(drm.next_order, HistogramPanel, key_b, key_h, color=_color_map[ii], title=title_str,
-		  xlabel="Sample state", ylabel="Fraction", xticks=[-2, -1, 0, 1], ylim=(0.0, 0.5), annotate_fractions=True)
+		  xlabel="Sample state", ylabel="Fraction [%]", xticks=[-2, -1, 0, 1], ylim=(0.0, 0.5), annotate_fractions=True)
 
 	# 2-bit spectral density panels
 	keys_x = [build_key(R2DBE_MCLASS, args.r2dbe_host, R2DBE_GROUP_SNAP, R2DBE_ATTR_SNAP_2BIT_FREQUENCY,
@@ -534,8 +547,10 @@ if __name__ == "__main__":
 	  line_labels=["{arg}".format(arg=R2DBE_ARG_SNAP_8BIT_DENSITY % inp) for inp in R2DBE_INPUTS])
 
 	# Resize text panel
+	pos = line_panel._axes.get_position()
 	new_bottom = line_panel._axes.get_position().p0[1] # <- get_position returns Bbox, p0 is lower left? and p0[1] is y?
 	new_position = text_panel._axes.get_position()
+	new_position.p0[0] = pos.p1[0]+0.02
 	new_position.p0[1] = new_bottom
 	text_panel._axes.set_position(new_position)
 
