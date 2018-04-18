@@ -44,7 +44,7 @@ now_hours = int((delta_date.days*24*3600 + delta_date.seconds)/3600)
 # convert time to hours since start of first epoch (1 Jan 2000)
 offset_secs = dict()
 for this_epoch in unique(ref_epoch):
-  ref_epoch_date = datetime(2000+this_epoch/2,(this_epoch % 2)*6+1,1,0,0,0)
+  ref_epoch_date = datetime(2000+int(this_epoch/2),(this_epoch % 2)*6+1,1,0,0,0)
   delta_date = (ref_epoch_date - ref_ref_epoch_date)
   offset_secs[this_epoch] = (delta_date.days*24*3600 + delta_date.seconds)
 secs_since_first_epoch = secs_since_epoch + array([offset_secs[re] for re in ref_epoch],dtype=int32)
@@ -61,7 +61,7 @@ drift_sec = drift_ns*1e-9
 m,k = polyfit(sec_rel,drift_sec,deg=1)
 lin_fit = m*sec_rel + k
 
-print "Relative frequency offset is: {0:+.7} [Hz/Hz] (internal PPS is early by {1:+.7} [ps/s])".format(m,m*1e12)
+print("Relative frequency offset is: {0:+.7} [Hz/Hz] (internal PPS is early by {1:+.7} [ps/s])".format(m,m*1e12))
 
 if not args.noX:
 	# plot
