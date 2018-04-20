@@ -518,7 +518,7 @@ if __name__ == "__main__":
 	drm.add_panel(drm.next_order, LinePanel, keys_x, keys_y, color_map=_color_map, title=title_str,
 	  xlabel="Frequency [MHz]", ylabel="Normalized spectral density [dB]",
 	  xlim=[0, 2048], xticks=[0, 1024, 2048],
-	  xconv=lambda x: x/1e6, yconv=lambda y: 20*log10(abs(y)/max(abs(y))),
+	  xconv=lambda x: x/1e6, yconv=lambda y: 10*log10(abs(y)/max(abs(y))),
 	  line_labels=["{arg}".format(arg=R2DBE_ARG_SNAP_8BIT_DENSITY % inp) for inp in R2DBE_INPUTS])
 
 	# Add text information panel
@@ -543,7 +543,7 @@ if __name__ == "__main__":
 	line_panel = drm.add_panel(drm.next_order, LinePanel, keys_x, keys_y, color_map=_color_map, title=title_str,
 	  xlabel="Frequency [MHz]", ylabel="Normalized spectral density [dB]",
 	  xlim=[0, 2048], xticks=[0, 1024, 2048],
-	  xconv=lambda x: x/1e6, yconv=lambda y: 20*log10(abs(y)/max(abs(y))),
+	  xconv=lambda x: x/1e6, yconv=lambda y: 10*log10(abs(y)/max(abs(y))),
 	  line_labels=["{arg}".format(arg=R2DBE_ARG_SNAP_8BIT_DENSITY % inp) for inp in R2DBE_INPUTS])
 
 	# Resize text panel
