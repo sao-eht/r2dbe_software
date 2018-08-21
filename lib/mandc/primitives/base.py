@@ -172,7 +172,7 @@ class ModSubGroup(object):
 
 	def __repr__(self):
 		repr_str = "{name}({grp})"
-		return repr_str.format(name=self.__class__.__name__, grp=[", ".format(self.mods)])
+		return repr_str.format(name=self.__class__.__name__, grp=", ".join(self.mods))
 
 class SignalPath(object):
 

@@ -32,6 +32,10 @@ class Mark6(object):
 		if self.host:
 			self._connect()
 
+	def __repr__(self):
+		repr_str = "{user}@{host}"
+		return repr_str.format(user=self.user, host=self.host)
+ 
 	def _connect(self):
 		pass
 

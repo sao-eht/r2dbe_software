@@ -27,6 +27,10 @@ class Backend(object):
 		self.logger.info("Instantiated backend with (r2dbe={r2dbe}; mark6={mark6})".format(name=self.name,
 		  r2dbe=self.r2dbe.roach2_host, mark6=self.mark6.host))
 
+	def __repr__(self):
+		repr_str = "{name}:%r>>%r" % (self.r2dbe,self.mark6)
+		return repr_str.format(name=self.name)
+
 	@classmethod
 	def from_dict(cls, name, station, options):
 		r2dbe = R2dbe(options[BACKEND_OPTION_R2DBE])
