@@ -16,7 +16,7 @@ module_logger = logging.getLogger(__name__)
 
 class Backend(object):
 
-	def __init__(self, name, station, r2dbe=None, mark6=None, signal_paths=[SignalPath], parent_logger=module_logger):
+	def __init__(self, name, station, r2dbe=None, mark6=None, signal_paths=[SignalPath()], parent_logger=module_logger):
 		self.name = name
 		self.station = station
 		self.r2dbe = r2dbe
