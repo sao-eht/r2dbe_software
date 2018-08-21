@@ -6,7 +6,7 @@ from threading import Thread
 from traceback import format_exception, format_exception_only
 from Queue import Queue
 
-from config import *
+from config import StationConfigParser
 from mark6 import Mark6
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup
 from r2dbe import R2DBE_INPUTS, R2DBE_NUM_INPUTS, R2dbe
@@ -31,28 +31,6 @@ class Backend(object):
 		repr_str = "{name}:%r>>%r" % (self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
-	@classmethod
-	def from_dict(cls, name, station, options):
-		r2dbe = R2dbe(options[BACKEND_OPTION_R2DBE])
-		mark6 = Mark6(options[BACKEND_OPTION_MARK6])
-		signal_paths = [None]*R2DBE_NUM_INPUTS
-		for input_n in R2DBE_INPUTS:
-			# Analog input
-			pol = options[BACKEND_OPTION_POLARIZATION % input_n]
-			rx_sb = options[BACKEND_OPTION_RECEIVER_SIDEBAND % input_n]
-			bdc_sb = options[BACKEND_OPTION_BLOCKDOWNCONVERTER_SIDEBAND % input_n]
-			ifs = IFSignal(receiver_sideband=rx_sb, blockdownconverter_sideband=bdc_sb, polarization=pol)
-			# Ethernet routing
-			mk6_iface_name = options[BACKEND_OPTION_IFACE % input_n]
-			mac, ip = mark6.get_iface_mac_ip(mk6_iface_name)
-			eth_rt = R2dbe.make_default_route_from_destination(mac, ip)
-			# Module
-			mods = ModSubGroup(options[BACKEND_OPTION_MODULES % input_n])
-			# Create signal path
-			signal_paths[input_n] = SignalPath(if_signal=ifs, eth_route=eth_rt, mod_subgroup=mods)
-
-		return cls(name, station, r2dbe=r2dbe, mark6=mark6, signal_paths=signal_paths)
-
 	def setup(self):
 		self.r2dbe.setup(self.station, [sp.ifs for sp in self.signal_paths], [sp.ethrt for sp in self.signal_paths])
 		self.mark6.setup()
@@ -69,16 +47,32 @@ class Station(object):
 
 	@classmethod
 	def from_file(cls, filename):
-		rcp = RawConfigParser()
-		if len(rcp.read(filename)) < 1:
-			module_logger.error("Unable to parse station configuration file '{0}'".format(filename))
+		scp = StationConfigParser()
+		if len(scp.read(filename)) < 1:
+			module_logger.error("Unable to read station configuration file '{0}'".format(filename))
 			return
-		station = rcp.get(GLOBAL_SECTION, GLOBAL_OPTION_STATION)
-		backend_list = rcp.get(GLOBAL_SECTION, GLOBAL_OPTION_BACKENDS).split(",")
+		station = scp.station
+		backend_list = scp.backends
 		backends = {}
 		for be in backend_list:
-			options = dict(rcp.items(be))
-			backends[be] = Backend.from_dict(be, station, options)
+			r2dbe = R2dbe(scp.backend_r2dbe(be))
+			mark6 = Mark6(scp.backend_mark6(be))
+			signal_paths = [None]*R2DBE_NUM_INPUTS
+			for inp in R2DBE_INPUTS:
+				# Analog input
+				pol, rx_sb, bdc_sb = scp.backend_if_pol_rx_bdc(be, inp)
+				ifs = IFSignal(receiver_sideband=rx_sb, blockdownconverter_sideband=bdc_sb, polarization=pol)
+				# Ethernet routing
+				mk6_iface_name = scp.backend_if_iface(be, inp)
+				mac, ip = mark6.get_iface_mac_ip(mk6_iface_name)
+				eth_rt = R2dbe.make_default_route_from_destination(mac, ip)
+				# Module
+				mods = scp.backend_if_modsubgroup(be, inp)
+				# Create signal path
+				signal_paths[inp] = SignalPath(if_signal=ifs, eth_route=eth_rt, mod_subgroup=mods)
+
+				# Instantiate backend and add
+				backends[be] = Backend(be, station, r2dbe=r2dbe, mark6=mark6, signal_paths=signal_paths)
 
 		return cls(station, backends)
 
