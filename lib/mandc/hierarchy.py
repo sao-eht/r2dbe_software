@@ -6,7 +6,7 @@ from threading import Thread
 from traceback import format_exception, format_exception_only
 from Queue import Queue
 
-from config import StationConfigParser
+from config import StationConfigParser, ValidationError, ParsingError
 from mark6 import Mark6
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup
 from r2dbe import R2DBE_INPUTS, R2DBE_NUM_INPUTS, R2dbe
@@ -47,10 +47,28 @@ class Station(object):
 
 	@classmethod
 	def from_file(cls, filename):
+		# Create a parser
 		scp = StationConfigParser()
-		if len(scp.read(filename)) < 1:
-			module_logger.error("Unable to read station configuration file '{0}'".format(filename))
+
+		# Read the specified file (includes parsing checks)
+		try:
+			if len(scp.read(filename)) < 1:
+				module_logger.error("Unable to read station configuration file '{0}'".format(filename))
+				return
+		except ParsingError as pe:
+			module_logger.error("{cls} raised {err} with {count} errors: {msg}".format(cls=scp.__class__.__name__,
+			  err=pe.__class__.__name__, msg=str(pe), count=len(pe.errors)))
 			return
+
+		# Validate the configuration
+		try:
+			scp.validate()
+		except ValidationError as ve:
+			module_logger.error("{cls} raised {err} with {count} errors: {msg}".format(cls=scp.__class__.__name__,
+			  err=ve.__class__.__name__, msg=str(ve), count=ve.count))
+			return
+
+		# If we reach this point, we can assume the config should be applicable
 		station = scp.station
 		backend_list = scp.backends
 		backends = {}

@@ -53,12 +53,6 @@ class StationConfigParser(RawConfigParser, object):
 		try:
 			return super(StationConfigParser, self).read(filename)
 		except ParsingError as pe:
-			self.logger.error("Parsing '{fname}' encountered {count} errors:\n{lines}".format(
-			  fname=self.filename, count=len(pe.errors), lines="\n".join([
-			  "  {num:3d}. line {line:3d}: {txt}".format(
-			  num=num+1,fname=self.filename,line=err[0],txt=err[1]
-			  ) for num,err in enumerate(pe.errors)]),))
-
 			raise pe
 
 	def validate(self):
@@ -89,10 +83,6 @@ class StationConfigParser(RawConfigParser, object):
 			ve.append(err.message)
 
 		if ve.count > 0:
-			self.logger.error("Validating '{fname}' encountered {count} errors:\n{lines}".format(
-			  fname=self.filename, count=ve.count, lines="\n".join([
-			  "  {num:3d}.: {txt}".format(num=n+1,txt=str(err)
-			  ) for n,err in enumerate(ve.errors)])))
 			raise ve
 
 	@property
