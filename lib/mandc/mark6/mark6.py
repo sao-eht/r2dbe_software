@@ -95,7 +95,9 @@ class Mark6(object):
 		return res, dict(zip(args,[r for r in rv]))
 
 	def _system_call(self, cmd):
-		ssh_cmd = "ssh {user}@{host} {cmd}".format(user=self.user, host=self.host, cmd=cmd)
+		# Execute cmd remotely. Note that cmd is wrapped in double quotes, so any internal
+		# quoting should use single quotes.
+		ssh_cmd = 'ssh {user}@{host} "{cmd}"'.format(user=self.user, host=self.host, cmd=cmd)
 		return _system_call(ssh_cmd)
 
 	def capture_vdif(self, iface, port, timeout=3.0, vtp_bytes=R2DBE_VTP_SIZE, vdif_bytes=R2DBE_VDIF_SIZE):
