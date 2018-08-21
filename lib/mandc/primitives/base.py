@@ -1,5 +1,6 @@
 import logging
 
+from collections import Counter
 from socket import inet_aton, inet_ntoa
 from struct import pack, unpack
 
@@ -168,7 +169,16 @@ class EthRoute(object):
 class ModSubGroup(object):
 
 	def __init__(self, mods):
+		# Check if valid module numbers specified
+		for m in [str(mm) for mm in mods]:
+			if m not in MODULE_NUMBERS:
+				raise ValueError("Invalid module number '{m}'".format(m=m))
+		# Build the subgroup string
 		self.mods = ''.join([str(m) for m in mods])
+		# Check if a module appears only once
+		for k,v in Counter(self.mods).items():
+			if v > 1:
+				raise ValueError("Cannot have a module '{m}' appear more than once in subgroup".format(m=k))
 
 	def __repr__(self):
 		repr_str = "{name}({grp})"
