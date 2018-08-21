@@ -12,6 +12,7 @@ from corr.snap import snapshots_get
 
 import adc
 from ..primitives.base import IFSignal, EthEntity, EthRoute, IPAddress, MACAddress, Port
+from ..primitives.devices import CheckingDevice
 from defines import *
 from ..data import VDIFTime
 
@@ -26,7 +27,7 @@ def format_bitcode_version(rcs):
 			return "git hash {0:07x}{1}".format(rcs["app_rev"], dirty_suffix)
 	return "unknown"
 
-class Roach2(object):
+class Roach2(CheckingDevice):
 
 	def __init__(self, roach2_host, parent_logger=module_logger, retry_snaps=3):
 		self.roach2_host = roach2_host

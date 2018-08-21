@@ -6,6 +6,7 @@ from struct import pack
 from tempfile import NamedTemporaryFile
 
 from ..primitives.base import IPAddress, MACAddress
+from ..primitives.devices import CheckingDevice
 from defines import *
 from ..data import VDIFFrame
 from ..r2dbe import R2DBE_VTP_SIZE, R2DBE_VDIF_SIZE
@@ -21,7 +22,7 @@ def _system_call(cmd):
 	# Return call return code, stdout, and stderr as 3-tuple
 	return (rc, stdout, stderr)
 
-class Mark6(object):
+class Mark6(CheckingDevice):
 
 	def __init__(self, mark6_host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger):
 		self.host = mark6_host

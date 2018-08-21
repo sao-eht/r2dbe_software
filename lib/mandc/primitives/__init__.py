@@ -13,4 +13,6 @@ from base import (
   SignalPath
 )
 
+from devices import CheckingDevice
+
 from defines import *
