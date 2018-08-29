@@ -24,8 +24,8 @@ def _system_call(cmd):
 
 class Mark6(CheckingDevice):
 
-	def __init__(self, mark6_host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger):
-		self.host = mark6_host
+	def __init__(self, host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger):
+		super(Mark6, self).__init__(host)
 		self.user = mark6_user
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name,
 		  self.__class__.__name__)), host=self.host,))

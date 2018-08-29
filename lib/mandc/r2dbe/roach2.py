@@ -29,20 +29,20 @@ def format_bitcode_version(rcs):
 
 class Roach2(CheckingDevice):
 
-	def __init__(self, roach2_host, parent_logger=module_logger, retry_snaps=3):
-		self.roach2_host = roach2_host
+	def __init__(self, host, parent_logger=module_logger, retry_snaps=3):
+		super(Roach2, self).__init__(host)
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name, 
-		  self.__class__.__name__)), host=self.roach2_host,))
+		  self.__class__.__name__)), host=self.host,))
 
 		# Set number of retries in case snapshot read fails
 		self._retry_snaps = retry_snaps
 
 		# connect to ROACH2
-		if self.roach2_host:
+		if self.host:
 			self._connect()
 
 	def _connect(self):
-		self.roach2 = FpgaClient(self.roach2_host)
+		self.roach2 = FpgaClient(self.host)
 		if not self.roach2.wait_connected(timeout=5):
 			raise RuntimeError("Timeout trying to connect to {0}. Is it up and running?".format(self.roach2.host))
 
@@ -51,7 +51,7 @@ class Roach2(CheckingDevice):
 			self.roach2.progdev(bitcode)
 		except RuntimeError as re:
 			self.logger.critical("Failed to program {roach2!r} with bitcode {code!r}. Is the BOF file installed?".format(
-			  roach2=self.roach2_host, code=bitcode))
+			  roach2=self.host, code=bitcode))
 			raise re
 		return format_bitcode_version(self.roach2.get_rcs())
 
@@ -81,17 +81,17 @@ class Roach2(CheckingDevice):
 
 class R2dbe(Roach2):
 
-	def __init__(self, roach2_host, bitcode=R2DBE_DEFAULT_BITCODE, parent_logger=module_logger):
-		super(R2dbe, self).__init__(roach2_host)
+	def __init__(self, host, bitcode=R2DBE_DEFAULT_BITCODE, parent_logger=module_logger):
+		super(R2dbe, self).__init__(host)
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name, 
-		  self.__class__.__name__)), host=self.roach2_host,))
+		  self.__class__.__name__)), host=self.host,))
 		self.bitcode = bitcode
 		self._inputs = [IFSignal(parent_logger=self.logger), ] * R2DBE_NUM_INPUTS
 		self._outputs = [EthRoute(parent_logger=self.logger), ] * R2DBE_NUM_OUTPUTS
 
 	def __repr__(self):
 		repr_str = "{name}"#[\n  {inputs[0]!r} : {outputs[0]!r}\n  {inputs[1]!r} : {outputs[1]!r}\n]"
-		return repr_str.format(name=self.roach2_host, inputs=self._inputs, outputs=self._outputs)
+		return repr_str.format(name=self.host, inputs=self._inputs, outputs=self._outputs)
 
 	def _dump_8bit_counts_buffer(self, input_n):
 		# Read buffer and interpret
