@@ -551,7 +551,41 @@ class R2dbe(Roach2):
 		return self._read_int(R2DBE_INPUT_DATA_SELECT % input_n)
 
 	def get_output(self, output_n):
-		return self._outputs[output_n]
+		# If output specifier not a list, make it a 1-element list
+		list_output = True
+		if not isinstance(output_n, list):
+			list_output = False
+			output_n = list((output_n,))
+
+		outp = []
+		for outp_n in output_n:
+			# Read 10GbE core details
+			tengbe_details = self.roach2.get_10gbe_core_details(R2DBE_TENGBE_CORE % outp_n)
+
+			# Get source parameters
+			src_ip = tengbe_details["my_ip"]
+			src_port = tengbe_details["fabric_port"]
+			src_mac = tengbe_details["mymac"]
+
+			# Get destination parameters
+			dst_ip = self.roach2.read_uint(R2DBE_TENGBE_DEST_IP % outp_n)
+			dst_port = self.roach2.read_uint(R2DBE_TENGBE_DEST_PORT % outp_n)
+			dst_mac = tengbe_details["arp"][dst_ip & 0xFF]
+
+			# Build EthRoute
+			src = EthEntity(mac_addr_entity=MACAddress(src_mac),
+			  ip_addr_entity=IPAddress(src_ip),
+			  port_entity=Port(src_port))
+			dst = EthEntity(mac_addr_entity=MACAddress(dst_mac),
+			  ip_addr_entity=IPAddress(dst_ip),
+			  port_entity=Port(dst_port))
+			outp.append(EthRoute(source_entity=src, destination_entity=dst))
+
+		# If output specifier not a list, revert to non-list result
+		if not list_output:
+			outp = outp[0]
+
+		return outp
 
 	def get_gps_pps_clock_offset(self):
 		return self._read_int(R2DBE_ONEPPS_GPS_OFFSET)
