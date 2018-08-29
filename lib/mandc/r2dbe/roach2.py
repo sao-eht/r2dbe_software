@@ -60,6 +60,11 @@ class Roach2(CheckingDevice):
 		self.logger.debug("read_int: {0} --> 0x{1:08x}".format(name, value))
 		return value
 
+	def _read_uint(self, name):
+		value = self.roach2.read_uint(name)
+		self.logger.debug("read_uint: {0} --> 0x{1:08x}".format(name, value))
+		return value
+
 	def _write_int(self, name, value):
 		self.roach2.write_int(name, value)
 		self.logger.debug("write_int: {0} <-- 0x{1:08x}".format(name, value))
