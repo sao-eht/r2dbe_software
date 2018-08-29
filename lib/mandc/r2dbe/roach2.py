@@ -728,6 +728,8 @@ class R2dbe(Roach2):
 		if bitcode_version.find(R2DBE_LATEST_VERSION_GIT_HASH) == -1:
 			self.logger.warn("Bitcode does not correspond to latest version which has hash {0}".format(
 			  R2DBE_LATEST_VERSION_GIT_HASH))
+		elif bitcode_version.find("dirty") != -1:
+			self.logger.warn("Bitcode is dirty")
 
 		# Do ADC interface calibration
 		self.logger.info("Performing ADC interface calibration")
