@@ -31,6 +31,9 @@ class Sideband(object):
 		else:
 			return repr(None)
 
+	def __eq__(self, other):
+		return self.sb == other.sb
+
 class RxSideband(Sideband):
 
 	def __repr__(self):
@@ -66,6 +69,9 @@ class Polarization(object):
 		else:
 			return repr(None)
 
+	def __eq__(self, other):
+		return self.pol == other.pol
+
 class IFSignal(object):
 
 	def __init__(self, receiver_sideband=None, blockdownconverter_sideband=None, polarization=None, 
@@ -89,6 +95,11 @@ class IFSignal(object):
 			raise KeyError(
 			  "Parameter '{0}' undefined for type {1}".format(key, self.__class__.__name__))
 
+	def __eq__(self, other):
+		return self.rx_sb == other.rx_sb and \
+		  self.bdc_sb == other.bdc_sb and \
+		  self.pol == other.pol
+
 class MACAddress(object):
 
 	def __init__(self, mac_int_or_str):
@@ -100,6 +111,9 @@ class MACAddress(object):
 	def __repr__(self):
 		hex_str = "{0:012x}".format(self.address)
 		return ':'.join([''.join(z) for z in zip(hex_str[::2], hex_str[1::2])])
+
+	def __eq__(self, other):
+		return self.address == other.address
 
 	@classmethod
 	def str2int(cls, mac_str):
@@ -118,6 +132,9 @@ class IPAddress(object):
 	def __repr__(self):
 		return inet_ntoa(pack('!I',self.address))
 
+	def __eq__(self, other):
+		return self.address == other.address
+
 	@classmethod
 	def str2int(cls, ip_str):
 		"""Convert IP address from dot-decimal notation to int"""
@@ -134,6 +151,9 @@ class Port(object):
 
 	def __repr__(self):
 		return "{0:d}".format(self.port)
+
+	def __eq__(self, other):
+		return self.port == other.port
 
 class EthEntity(object):
 
@@ -156,6 +176,11 @@ class EthEntity(object):
 		else:
 			raise KeyError("Parameter '{0}' undefined for type {1}".format(key, self.__class__.__name__))
 
+	def __eq__(self, other):
+		return self.ip == other.ip and \
+		  self.mac == other.mac and \
+		  self.port == other.port
+
 class EthRoute(object):
 
 	def __init__(self, source_entity=None, destination_entity=None, parent_logger=module_logger):
@@ -165,6 +190,9 @@ class EthRoute(object):
 	def __repr__(self):
 		repr_str = "{name}({src!r} --> {dst!r})"
 		return repr_str.format(name=self.__class__.__name__, src=self.src, dst=self.dst)
+
+	def __eq__(self, other):
+		return self.src == other.src and self.dst == other.dst
 
 class ModSubGroup(object):
 
