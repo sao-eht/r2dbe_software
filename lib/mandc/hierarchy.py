@@ -25,7 +25,7 @@ class Backend(object):
 		self.logger = logging.getLogger("{name}[name={be}]".format(name=".".join((parent_logger.name, 
 		  self.__class__.__name__)), be=self.name))
 		self.logger.info("Instantiated backend with (r2dbe={r2dbe}; mark6={mark6})".format(name=self.name,
-		  r2dbe=self.r2dbe.roach2_host, mark6=self.mark6.host))
+		  r2dbe=self.r2dbe.host, mark6=self.mark6.host))
 
 	def __repr__(self):
 		repr_str = "{name}:%r>>%r" % (self.r2dbe,self.mark6)
