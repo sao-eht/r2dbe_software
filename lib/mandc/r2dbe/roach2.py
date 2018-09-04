@@ -1,8 +1,11 @@
 import logging
+import socket
 
 from datetime import datetime, timedelta
+from functools import partial
 from numpy import arange, array, count_nonzero, int8, nonzero, sqrt, roll, uint32, uint64, zeros
 from struct import pack, unpack
+from telnetlib import Telnet
 from time import ctime, sleep
 
 import adc5g
@@ -27,10 +30,47 @@ def format_bitcode_version(rcs):
 			return "git hash {0:07x}{1}".format(rcs["app_rev"], dirty_suffix)
 	return "unknown"
 
+class R2dbeConfig(object):
+
+	def __init__(self, station, input0, input1, output0, output1):
+		self._station = station
+		self._inputs = [input0, input1]
+		self._outputs = [output0, output1]
+
+	@property
+	def station(self):
+		return self._station
+
+	@property
+	def inputs(self):
+		return self._inputs
+
+	@property
+	def outputs(self):
+		return self._outputs
+
+	def __eq__(self, other):
+		if self.station != other.station:
+			return False
+		ours = self.inputs
+		theirs = self.inputs
+		for o,t in zip(ours, theirs):
+			if o != t:
+				return False
+		ours = self.outputs
+		theirs = self.outputs
+		for o,t in zip(ours, theirs):
+			if o != t:
+				return False
+		return True
+
+	def __str__(self):
+		return "Station: {rc.station}\n Inputs: {rc.inputs}\nOutputs: {rc.outputs}".format(rc=self)
+
 class Roach2(CheckingDevice):
 
-	def __init__(self, host, parent_logger=module_logger, retry_snaps=3):
-		super(Roach2, self).__init__(host)
+	def __init__(self, host, parent_logger=module_logger, retry_snaps=3, **kwargs):
+		super(Roach2, self).__init__(host, **kwargs)
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name, 
 		  self.__class__.__name__)), host=self.host,))
 
@@ -84,10 +124,107 @@ class Roach2(CheckingDevice):
 					self.logger.critical("Could not read snapshot, exiting")
 					raise runtime_error
 
+	def _katcp_command(self, msg, *args):
+		try:
+			# Establish connection and read all there is
+			tsesh = Telnet(self.host, KATCP_TELNET_PORT, timeout=5)
+			_ = tsesh.read_very_eager()
+
+			# Write the message
+			snd = KATCP_REQUEST_CHR + msg + " ".join([str(a) for a in args]) + "\n"
+			tsesh.write(snd)
+
+			# Give tcpborphserver3 time to think about it
+			sleep(0.5)
+
+			# Read the response
+			rsp = tsesh.read_very_eager()
+			#~ rsp = '#fpga ready\n#log info 1795148 raw fpga\\_programmed,\\_mapped\\_with\\_r2dbe_rev2_v1.1.bof\\_and\\_meta\\_ready\n!fpgastatus ok\n'
+			if rsp == "":
+				return False, {"error":"no\_data"}, {}
+
+			# Build the return structure
+			meta = {}
+			reply = {}
+			lines = rsp.split("\n")
+			for l in lines:
+				if len(l) == 0:
+					continue
+
+				# Decide whether to put in meta or response, or ignore
+				_d = None
+				if l[0] == KATCP_META_CHR:
+					_d = meta
+				elif l[0] == KATCP_RESPONSE_CHR:
+					_d = reply
+				else:
+					continue
+
+				# Add / append key
+				words = l.split(" ")
+				key = words[0][1:]
+				args = tuple(words[1:])
+				if key in _d.keys():
+					_d[key].append(args)
+				else:
+					_d[key] = [args]
+
+			return True, reply, meta
+
+			# Close the connection
+			tsesh.close()
+
+		except socket.timeout as to:
+			self.logger.error("Timeout when trying to connect to {roach2!r} via telnet on port {portno}".format(
+			  roach2=self.host, portno=KATCP_TELNET_PORT))
+
+			return False, {"error":"timeout"}, {}
+
+	def _fpga_programmed(self):
+		"""Check if the FPGA is programmed."""
+
+		# Get FPGA status
+		res, reply, meta = self._katcp_command("fpgastatus")
+		if not res:
+			self.logger.error("Could not check if FPGA in {roach2!r} is programmed".format(
+			  roach2=self.host))
+			return False
+
+		# Perhaps only one condition sufficient, but check both
+		if ("ok",) in reply["fpgastatus"] and ("ready",) in meta["fpga"]:
+			return True
+
+		# In all other cases return False
+		return False
+
+	def pre_config_checks(self):
+
+		# Do super's pre-config checks first
+		super(Roach2, self).pre_config_checks()
+
+		# Compile the checklist
+		checklist = []
+
+		# Run this class's checklist
+		self.do_checklist(checklist)
+
+	def post_config_checks(self):
+
+		# Do super's pre-config checks first
+		super(Roach2, self).post_config_checks()
+
+		# Compile the checklist
+		checklist = [
+		  ("FPGA is programmed", self._fpga_programmed, None, None, True),
+		]
+
+		# Run this class's checklist
+		self.do_checklist(checklist)
+
 class R2dbe(Roach2):
 
-	def __init__(self, host, bitcode=R2DBE_DEFAULT_BITCODE, parent_logger=module_logger):
-		super(R2dbe, self).__init__(host)
+	def __init__(self, host, bitcode=R2DBE_DEFAULT_BITCODE, parent_logger=module_logger, **kwargs):
+		super(R2dbe, self).__init__(host, **kwargs)
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name, 
 		  self.__class__.__name__)), host=self.host,))
 		self.bitcode = bitcode
@@ -199,6 +336,9 @@ class R2dbe(Roach2):
 		return EthRoute(source_entity=src, destination_entity=dst)
 
 	def adc_interface_cal(self, input_n):
+
+		success = True
+
 		# Set data input source to ADC (store current setting)
 		data_select = self.get_input_data_source(input_n)
 		self.set_input_data_source(input_n, R2DBE_INPUT_DATA_SOURCE_ADC)
@@ -210,7 +350,11 @@ class R2dbe(Roach2):
 		# Do calibration
 		opt, glitches = adc5g.calibrate_mmcm_phase(self.roach2, input_n, [R2DBE_DATA_SNAPSHOT_8BIT % input_n,])
 		gstr = adc5g.pretty_glitch_profile(opt, glitches)
-		self.logger.info("ADC{0} calibration found optimal phase: {1} [{2}]".format(input_n, opt, gstr))
+		if opt is None:
+			success = False
+			self.logger.error("{ADC{0} interface calibration failed, no optimal phase found: {1} [{2}]".format(input_n, opt, gstr))
+		else:
+			self.logger.info("ADC{0} calibration found optimal phase: {1} [{2}]".format(input_n, opt, gstr))
 
 		# Unset ADC test mode
 		adc5g.unset_test_mode(self.roach2, input_n)
@@ -218,7 +362,12 @@ class R2dbe(Roach2):
 		# Restore input source
 		self.set_input_data_source(input_n, data_select)
 
+		return success
+
 	def adc_core_cal(self, input_n, max_iter=5, curb_gain_step=0.5, curb_offset_step=0.5):
+
+		success = True
+
 		# Reset core gain parameters
 		self.logger.debug("Resetting ADC{0} core gain parameters".format(input_n))
 		adc.set_core_gains(self.roach2, input_n, [0]*4)
@@ -295,6 +444,7 @@ class R2dbe(Roach2):
 				self.logger.warn("Maximum number of iterations for ADC{0} core gain cal reached, using best result".format(
 				  input_n))
 				adc.set_core_gains(self.roach2, input_n, best_gains)
+				success = False
 				break
 
 		self.logger.debug("ADC{0} core gain solution: [{1}] (standard deviations were [{2}])".format(input_n,
@@ -374,11 +524,14 @@ class R2dbe(Roach2):
 				self.logger.warn("Maximum number of iterations for ADC{0} core offset cal reached, using best result".format(
 				  input_n))
 				adc.set_core_offsets(self.roach2, input_n, best_offsets)
+				success = False
 				break
 
 		self.logger.debug("ADC{0} core offset solution: [{1}] (means were [{2}])".format(input_n,
 		  ", ".join(["{0:+.3f}".format(o) for o in adc.get_core_offsets(self.roach2, input_n)]),
 		  ", ".join(["{0:+.3f}".format(m) for m in best_offsets_mean])))
+
+		return success
 
 	def arm_one_pps(self):
 		self._write_int(R2DBE_ONEPPS_CTRL, 1<<31)
@@ -386,6 +539,9 @@ class R2dbe(Roach2):
 
 		# Wait until at least one full second has passed
 		sleep(2)
+
+	def enable_vdif_transmission(self, output_n):
+		self._write_int(R2DBE_VDIF_ENABLE % output_n, 1)
 
 	def get_2bit_and_8bit_snapshot(self, input_n):
 		# If input specifier not a list, make it a 1-element list
@@ -646,9 +802,8 @@ class R2dbe(Roach2):
 		  input_n, threshold, th_pos, th_neg))
 
 	def set_input(self, input_n, ifsig_inst):
-		self._inputs[input_n] = ifsig_inst
 		self.logger.info("(Analog) if{0} input is {1!r}".format(input_n, ifsig_inst))
-		
+
 		w4 = (R2DBE_VDIF_EUD_VERSION<<24) + (ifsig_inst["RxSB"]<<2) + (ifsig_inst["BDCSB"]<<1) + ifsig_inst["Pol"]
 		self._write_int(R2DBE_VDIF_HDR_W4 % input_n, w4)
 
@@ -656,7 +811,6 @@ class R2dbe(Roach2):
 		self._write_int(R2DBE_INPUT_DATA_SELECT % input_n, source)
 
 	def set_output(self, output_n, ethrt_inst, thread_id=None):
-		self._outputs[output_n] = ethrt_inst
 		self.logger.info("(10GbE) SLOT0 CH{0} route is {1!r}".format(output_n, ethrt_inst))
 
 		# Get source & destination addresses
@@ -715,12 +869,24 @@ class R2dbe(Roach2):
 
 		self._write_int(R2DBE_VDIF_THREAD_ID % output_n, thread_id)
 
+	def get_vdif_data_mode(self, output_n):
+		reorder_2bit = self._read_uint(R2DBE_VDIF_REORDER_2BIT % output_n) & 0x01 == 1
+		little_endian = self._read_uint(R2DBE_VDIF_LITTLE_ENDIAN % output_n) & 0x01 == 1
+		data_not_test = not (self._read_uint(R2DBE_VDIF_TEST_SELECT % output_n) & 0x01 == 1)
+
+		return reorder_2bit, little_endian, data_not_test
+
 	def set_vdif_data_mode(self, output_n, reorder_2bit=True, little_endian=True, data_not_test=True):
 		self._write_int(R2DBE_VDIF_REORDER_2BIT % output_n, int(reorder_2bit))
 		self._write_int(R2DBE_VDIF_LITTLE_ENDIAN % output_n, int(little_endian))
 		self._write_int(R2DBE_VDIF_TEST_SELECT % output_n, int(not data_not_test))
 
-	def setup(self, station, inputs, outputs, thread_ids=[None]*R2DBE_NUM_OUTPUTS):
+	def config_object(self, cfg):
+		self._station = cfg.station
+		self._inputs = cfg.inputs
+		self._outputs = cfg.outputs
+
+	def config_device(self, cfg):
 
 		# Program bitcode
 		bitcode_version = self._program(self.bitcode)
@@ -734,11 +900,12 @@ class R2dbe(Roach2):
 		# Do ADC interface calibration
 		self.logger.info("Performing ADC interface calibration")
 		for ii in R2DBE_INPUTS:
-			self.adc_interface_cal(ii)
+			self.do_check("ADC{0} interface calibration".format(ii),
+			  partial(self.adc_interface_cal,ii), None, None, False)
 
 		# Set inputs
 		self.logger.info("Defining analog inputs")
-		for ii, inp in enumerate(inputs):
+		for ii, inp in enumerate(cfg.inputs):
 			self.set_input_data_source(ii, R2DBE_INPUT_DATA_SOURCE_ADC)
 			self.set_input(ii, inp)
 
@@ -752,10 +919,10 @@ class R2dbe(Roach2):
 
 		# Set outputs / VDIF parameters
 		self.logger.info("Defining ethernet outputs")
-		for ii, outp in enumerate(outputs):
+		for ii, outp in enumerate(cfg.outputs):
 			self.set_output(ii, outp)
-			self.set_station_id(ii, station)
-			self.set_thread_id(ii, thread_ids[ii])
+			self.set_station_id(ii, cfg.station)
+			self.set_thread_id(ii, R2DBE_VDIF_DEFAULT_THREAD_IDS[ii])
 
 			# Set the data source / format
 			self.set_vdif_data_mode(ii)
@@ -765,17 +932,137 @@ class R2dbe(Roach2):
 
 		# Enable VDIF cores
 		self.logger.info("Enabling VDIF transmission")
-		for ii, _ in enumerate(outputs):
+		for ii, _ in enumerate(cfg.outputs):
 			self._write_int(R2DBE_VDIF_ENABLE % ii, 1)
 
 		# Do ADC core calibration
 		self.logger.info("Performing ADC core calibration")
-		for ii, _ in enumerate(inputs):
-			self.adc_core_cal(ii)
+		for ii, _ in enumerate(cfg.inputs):
+			self.do_check("ADC{0} core calibration".format(ii),
+			  partial(self.adc_core_cal,ii), None, None, False)
 
 		# Set 2-bit thresholds
 		self.logger.info("Setting 2-bit quantization thresholds")
-		for ii, _ in enumerate(inputs):
+		for ii, _ in enumerate(cfg.inputs):
 			self.set_2bit_threshold(ii)
 
+	@property
+	def device_config(self):
+		try:
+			rc = R2dbeConfig(self.get_station_id(0), self.get_input(0), self.get_input(1),
+			  self.get_output(0), self.get_output(1))
+			return rc
+		except:
+			return None
 
+	@property
+	def device_is_configured(self):
+		"""Check if the device is configured.
+
+		For an R2dbe device this is True if all of the following conditions are
+		met:
+		  1. The FPGA is programmed with the correct bitcode
+		  2. Input data source is set to ADC for both inputs
+		  3. Output VDIF data mode for both outputs is set to:
+		    3.1 reorder_2bit
+		    3.2 little_endian
+		    3.3 data_not_test
+		  4. VDIF transmission is enabled
+		"""
+
+		configured = True
+
+		# FPGA should be running the correct bitcode
+		configured = configured and self._running_correct_bitcode()
+
+		# for each input, ...
+		for ii in R2DBE_INPUTS:
+			# ... ADC should be the input data source
+			configured = configured and self.get_input_data_source(ii) == R2DBE_INPUT_DATA_SOURCE_ADC
+
+		# for each output, ...
+		for ii in R2DBE_OUTPUTS:
+
+			# ... VDIF data mode should give (True, True, True)
+			for rt in self.get_vdif_data_mode(ii):
+				configured = configured and rt
+
+			# ... VDIF transmission should be enabled
+			configured = configured and self.vdif_transmission_enabled(ii)
+
+		return configured
+
+	@property
+	def object_config(self):
+		try:
+			rc = R2dbeConfig(self._station, self._inputs[0], self._inputs[1],
+			  self._outputs[0], self._outputs[1])
+			return rc
+		except:
+			return None
+
+	def setup(self, station, inputs, outputs):
+
+		# Create an R2dbeConfig from the given parameters
+		rc = R2dbeConfig(station, inputs[0], inputs[1], outputs[0], outputs[1])
+
+		# Set the object configuration
+		self.config_object(rc)
+
+		# Check if the device config matches the object
+		if self.device_matches_object():
+			self.logger.info("Device configuration {name} matches specification".format(
+			  name=self.host))
+			if not self.ask("Device configuration for {name} matches specification. Overwrite?".format(
+				  name=self.host)):
+				self.logger.info("Device configuration for {name} will be left unaltered".format(
+					  name=self.host))
+				return
+			else:
+				self.logger.info("Device configuration for {name} will be overwritten".format(
+				  name=self.host))
+
+		# If device config does not match object, or ask response said to overwrite
+		self.config_device(rc)
+
+	def vdif_transmission_enabled(self, output_n):
+		return (self._read_uint(R2DBE_VDIF_ENABLE % output_n) & 0x01) == 1
+
+	def _running_correct_bitcode(self):
+		"""Check if the FPGA is programmed with the correct bitcode."""
+		# If FPGA not programmed, short-circuit to False
+		if not self._fpga_programmed():
+			return False
+
+		# If not correct version (different hash OR matching hash but dirty), False
+		bitcode_version = format_bitcode_version(self.roach2.get_rcs())
+		if bitcode_version.find(R2DBE_LATEST_VERSION_GIT_HASH) == -1 or \
+		  bitcode_version.find("dirty") != -1:
+			return False
+
+		# If we reach this point, programmed with right bitcode
+		return True
+
+	def pre_config_checks(self):
+
+		# Do super's pre-config checks first
+		super(Roach2, self).pre_config_checks()
+
+		# Compile the checklist
+		checklist = []
+
+		# Run this class's checklist
+		self.do_checklist(checklist)
+
+	def post_config_checks(self):
+
+		# Do super's pre-config checks first
+		super(Roach2, self).post_config_checks()
+
+		# Compile the checklist
+		checklist = [
+		  ("programmed with correct bitcode", self._running_correct_bitcode, None, None, True),
+		]
+
+		# Run this class's checklist
+		self.do_checklist(checklist)

@@ -92,3 +92,9 @@ R2DBE_COUNTS_ROLL_BY = 128
 R2DBE_COUNTS_ROLL_AXIS = 2
 # Core ordering along 1th axis
 R2DBE_COUNTS_CORE_ORDER = (0, 2, 1, 3)
+
+########################################################## Telnet / Katcp stuff
+KATCP_TELNET_PORT = 7147
+KATCP_REQUEST_CHR = "?"
+KATCP_RESPONSE_CHR = "!"
+KATCP_META_CHR = "#"

@@ -8,3 +8,7 @@ from thread import (
   ExceptingThread,
   QueuedActionProcessor,
 )
+
+from messages import (
+  TerminalMessenger,
+)

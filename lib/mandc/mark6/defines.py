@@ -1,1 +1,4 @@
 MARK6_DEFAULT_USER = "oper"
+
+MARK6_INPUTS = (0, 1)
+MARK6_MODULES = (0, 1, 2, 3)
