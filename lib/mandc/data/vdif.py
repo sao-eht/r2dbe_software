@@ -2,7 +2,6 @@ from struct import pack, unpack
 from datetime import datetime, timedelta, tzinfo
 from numpy import int32, uint32, array, zeros
 
-
 class VDIFTime(object):
 
 	EPOCH_0_YEAR = 2000
