@@ -691,7 +691,16 @@ class Mark6(CheckingDevice):
 		super(Mark6, self).post_config_checks()
 
 		# Compile the checklist
-		checklist = []
+		eth0 = self.object_config.input_streams[0].iface_id
+		port0 = self.object_config.input_streams[0].portno
+		eth1 = self.object_config.input_streams[1].iface_id
+		port1 = self.object_config.input_streams[1].portno
+		checklist = [
+		  ("packets received on interace {iface}".format(iface=eth0),
+		    lambda: self.capture_vdif(eth0, port0), None, None, True),
+		  ("packets received on interace {iface}".format(iface=eth1),
+		    lambda: self.capture_vdif(eth1, port1), None, None, True)
+		]
 
 		# Run this class's checklist
 		self.do_checklist(checklist)
