@@ -347,37 +347,48 @@ class Mark6(CheckingDevice):
 
 		return t
 
-	def capture_vdif(self, iface, port, timeout=3.0, vtp_bytes=R2DBE_VTP_SIZE, vdif_bytes=R2DBE_VDIF_SIZE):
+	def capture_vdif(self, iface, port, timeout=3.0, timed_capture=False,
+	  vtp_bytes=R2DBE_VTP_SIZE, vdif_bytes=R2DBE_VDIF_SIZE):
 		vdifsize = vtp_bytes + vdif_bytes
 		code_str = "" \
 		  "from netifaces import ifaddresses\n" \
 		  "from socket import socket, AF_INET, SOCK_DGRAM\n" \
+		  "from datetime import datetime\n" \
 		  "iface = ifaddresses('{iface}')\n" \
 		  "sock_addr = (iface[2][0]['addr'], {portno})\n" \
 		  "sock = socket(AF_INET, SOCK_DGRAM)\n" \
 		  "sock.settimeout({timeout})\n" \
 		  "sock.bind(sock_addr)\n" \
+		  "t1 = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')\n" \
 		  "data, addr = sock.recvfrom({vdifsize})\n" \
-		  "data = [ord(d) for d in data]\n".format(iface=iface, portno=port, timeout=timeout, vdifsize=vdifsize)
+		  "t2 = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')\n" \
+		  "data = [ord(d) for d in data]\n" \
+		  "t_d_t = (t1, data, t2)\n".format(iface=iface, portno=port, timeout=timeout, vdifsize=vdifsize)
 
 		# Get call result
-		res, rv = self._safe_python_call(code_str, "data")
+		res, rv = self._safe_python_call(code_str, "t_d_t")
 
 		if res:
-			data = rv["data"][vtp_bytes:]
+			data = rv["t_d_t"][1][vtp_bytes:]
 			bin_data = pack("<%dB" % vdif_bytes, *data)
-			return VDIFFrame.from_bin(bin_data)
+			vdif = VDIFFrame.from_bin(bin_data)
+
+			if not timed_capture:
+				return vdif
+
+			t1 = datetime.strptime(rv["t_d_t"][0], "%Y-%m-%d %H:%M:%S.%f")
+			t2 = datetime.strptime(rv["t_d_t"][2], "%Y-%m-%d %H:%M:%S.%f")
+			return vdif, t1, t2
 
 	def vv_proxy(self, iface, port):
 
-		# Get time just before packet grab
-		t1 = self.datetime()
-
-		# Grab packet
-		vd = self.capture_vdif(iface, port)
-
-		# Get time just after packet grab
-		t2 = self.datetime()
+		# Do a timed capture
+		res = self.capture_vdif(iface, port, timed_capture=True)
+		# None return means timeout
+		if res is None:
+				return None
+		# Expand successful capture into VDIF and timestamps
+		vd, t1, t2 = res
 
 		# Error margin
 		margin = (t2 - t1).total_seconds()/2
