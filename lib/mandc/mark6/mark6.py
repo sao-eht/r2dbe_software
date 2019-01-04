@@ -424,42 +424,87 @@ class Mark6(CheckingDevice):
 				return rv["iface"]
 
 	def get_module_status(self, mod_n):
-		mstat_reply = self._daclient_query("mstat", str(mod_n))
-		return (mstat_reply[9], mstat_reply[10])
+		qreply = self._daclient_query("mstat", str(mod_n))
 
-	def mount_modules(self, grp="1234"):
-		return int(self._daclient_set("group","mount",grp).split("=")[1].split(":")[0]) == 0
+		return ModuleStatus(qreply)
 
-	def input_streams(self, throughputs):
-		for ii, tp in enumerate(throughputs):
-			ip = tp["eth"].ip
-			port = tp["eth"].port
-			iface = tp["iface"]
-			mod = tp["mod"]
-			params = (
-			  "add",
-			  "s%d" % ii,
-			  "vdif",
-			  "8224",
-			  "50",
-			  "42",
-			  str(iface),
-			  str(ip),
-			  str(port),
-			  str(mod),
-			)
-			# Add the input streams
-			self._daclient_set("input_stream",*params)
+	def compare_module_dual_status(self, s1=None, s2=None, mod_n=MARK6_MODULES):
+		# Make a list of requested modules
+		if not type(mod_n) == list:
+			mod_n = [mod_n]
 
-		# Finally, commit the input streams
-		self._daclient_set("input_stream","commit")
+		# Compare each module against statuses
+		for m in mod_n:
+			mstat = self.get_module_status(m)
+			if s1 is not None and mstat.status1 != s1:
+				return False
+			if s2 is not None and mstat.status2 != s2:
+				return False
 
-	def setup(self, station, inputs, outputs, tell=None, ask=None):
+		return True
 
-		self.station = station
+	def mod_init(self, mod_n, MSN, new=False, diskno=MOD_DISKNO, mod_type=MOD_TYPE_SG):
+		args = [mod_n, diskno, MSN, mod_type]
+		if new:
+			args.extend(["new"])
+		sresp = self._daclient_set("mod_init",*args)
 
-		# All modules used
-		all_mods = "".join(outputs)
+	def group_new(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","new",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def group_mount(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","mount",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def group_open(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","open",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def group_close(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","close",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def group_unmount(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","unmount",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def group_unprotect(self, grp=GROUP_REF):
+		sresp = self._daclient_set("group","unprotect",grp)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def add_input_stream(self, input_stream):
+		params = ["add"] + input_stream.params
+		sresp = self._daclient_set("input_stream",*params)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def delete_input_stream(self, label):
+		params = ["delete", label]
+		sresp = self._daclient_set("input_stream",*params)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def get_input_streams(self):
+		qresp = self._daclient_query("input_stream")
+
+		input_streams = []
+		for n in range(len(qresp.params)/9):
+			sub = qresp.params[n*9:(n+1)*9]
+			input_streams.append(InputStream(*sub))
+
+		return input_streams
+
+	def commit_input_streams(self):
+		sresp = self._daclient_set("input_stream", "commit")
+
+		return sresp.cprc == CPLANE_SUCCESS
 
 		# Mount the modules
 		if not self.mount_modules(grp=all_mods):
