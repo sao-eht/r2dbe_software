@@ -23,6 +23,201 @@ def _system_call(cmd):
 	# Return call return code, stdout, and stderr as 3-tuple
 	return (rc, stdout, stderr)
 
+class ModuleStatus(object):
+
+	def __init__(self, qresp):
+		self.group_ref = qresp.params[0]
+		self.slot = int(qresp.params[1])
+		self.eMSN = qresp.params[2]
+		self.ndisks_dsc = int(qresp.params[3])
+		self.ndisks_reg = int(qresp.params[4])
+		self.gb_remain = 0 if not qresp.params[5].isdigit() else int(qresp.params[5])
+		self.gb_total = qresp.params[6]
+		self.status1 = qresp.params[7]
+		self.status2 = qresp.params[8]
+		self.type = qresp.params[9]
+
+	@property
+	def MSN(self):
+		return self.eMSN.split("/")[0]
+
+class Response(object):
+
+	def __init__(self, params):
+		# return code
+		self.rc = int(params[0])
+		# cplane return code
+		self.cprc = int(params[1])
+		# parameters
+		self.params = params[2:]
+
+	@classmethod
+	def string2params(cls, s):
+		params = s.split(":")
+		params[-1] = params[-1].split(";")[0]
+
+		return params
+
+class QueryResponse(Response):
+
+	def __init__(self, name, *args):
+		super(QueryResponse, self).__init__(*args)
+		# query name
+		self.name = name
+
+	@classmethod
+	def from_string(cls, qs):
+		query, response = qs.split("?")
+		qname = query.split("!")[1]
+		params = Response.string2params(response)
+
+		return cls(qname, params)
+
+	def __repr__(self):
+		return "!{s.name}?{s.rc}:{s.cprc}:{param};".format(s=self,param=":".join(self.params))
+
+class CommandResponse(Response):
+
+	def __init__(self, name, *args):
+		super(CommandResponse, self).__init__(*args)
+		# command name
+		self.name = name
+
+	@classmethod
+	def from_string(cls, cs):
+		command, response = cs.split("=")
+		cname = command.split("!")[1]
+		params = Response.string2params(response)
+
+		return cls(cname, params)
+
+	def __repr__(self):
+		return "!{s.name}={s.rc}:{s.cprc}:{param};".format(s=self,param=":".join(self.params))
+
+class InputStream(object):
+
+	def __init__(self, label, data_format, payload_size, payload_offset, psn_offset,
+	  iface_id, filter_address, portno, subgroup):
+		self._label = label
+		self._data_format = data_format
+		self._payload_size = int(payload_size)
+		self._payload_offset = int(payload_offset)
+		self._psn_offset = int(psn_offset)
+		self._iface_id = iface_id
+		self._filter_address = filter_address,
+		self._portno = int(portno)
+		self._subgroup = subgroup
+
+	@classmethod
+	def from_eth_iface_mod(cls, label, eth, iface, mod, src_type=R2DBE_SOURCE_TYPE):
+		# eth is EthRoute, mod is ModSubGroup
+		ip = str(eth.dst.ip)
+		port = str(eth.dst.port)
+		mod = str(mod)
+
+		if src_type not in SOURCE_TYPES:
+			raise RuntimeError("Unsupported source type '{src}' for input stream definition".format(
+			  src_type))
+
+		if src_type == R2DBE_SOURCE_TYPE:
+			data_format = R2DBE_DATA_FORMAT
+			payload_size = R2DBE_PAYLOAD_SIZE
+			payload_offset = R2DBE_PAYLOAD_OFFSET
+			psn_offset = R2DBE_PSN_OFFSET
+
+		return cls(label, data_format, payload_size, payload_offset, psn_offset,
+		  iface, ip, port, mod)
+
+	def __eq__(self, other):
+		if not self.label == other.label:
+			# Comparison on label useful, since it's derived from station code
+			return False
+		if not self.data_format == other.data_format:
+			return False
+		if not self.payload_size == other.payload_size:
+			return False
+		if not self.payload_offset == other.payload_offset:
+			return False
+		if not self.psn_offset == other.psn_offset:
+			return False
+		if not self.iface_id == other.iface_id:
+			return False
+		if not self.filter_address == other.filter_address:
+			return False
+		if not self.portno == other.portno:
+			return False
+		if not self.subgroup == other.subgroup:
+			return False
+		return True
+
+	def __repr__(self):
+		return ":".join([str(p) for p in self.params])
+
+	@property
+	def params(self):
+		return [self.label, self.data_format, self.payload_size, self.payload_offset,
+		  self.psn_offset, self.iface_id, self.portno, self.subgroup]
+
+	@property
+	def label(self):
+		return self._label
+
+	@property
+	def data_format(self):
+		return self._data_format
+
+	@property
+	def payload_size(self):
+		return self._payload_size
+
+	@property
+	def payload_offset(self):
+		return self._payload_offset
+
+	@property
+	def psn_offset(self):
+		return self._psn_offset
+
+	@property
+	def iface_id(self):
+		return self._iface_id
+
+	@property
+	def filter_address(self):
+		return self._filter_address
+
+	@property
+	def portno(self):
+		return self._portno
+
+	@property
+	def subgroup(self):
+		return self._subgroup
+
+class Mark6Config(object):
+
+	def __init__(self, station, input_stream0, input_stream1):
+		self._station = station
+		self._input_streams = [input_stream0, input_stream1]
+
+	@property
+	def station(self):
+		return self._station
+
+	@property
+	def input_streams(self):
+		return self._input_streams
+
+	def __eq__(self, other):
+		if self.station != other.station:
+			return False
+		ours = self.input_streams
+		theirs = self.input_streams
+		for o,t in zip(ours, theirs):
+			if o != t:
+				return False
+		return True
+
 class Mark6(CheckingDevice):
 
 	def __init__(self, host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger, **kwargs):
