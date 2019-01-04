@@ -130,6 +130,10 @@ class Station(CheckingDevice):
 			if avail:
 				avail_backends.append(be)
 
+		# There needs to be at least one available backend
+		if len(avail_backends) < 1:
+			raise RuntimeError("There are not enough backend devices available for a complete signal path")
+
 		backends = {}
 		for be in avail_backends:
 
