@@ -253,13 +253,43 @@ class Mark6(CheckingDevice):
 		# Trim any whitespace characters
 		response = response.strip()
 
-		return response
+		return response, cmd_args
 
 	def _daclient_query(self, cmd, *args):
-		return self._daclient_call("?", cmd, *args)
+		rx, tx = self._daclient_call("?", cmd, *args)
+
+		self.logger.debug("Sent '{tx}', got back '{rx}'".format(tx=tx,rx=rx))
+
+		qr = QueryResponse.from_string(rx)
+		if not qr.rc == VSI_SUCCESS:
+			raise RuntimeError("Query failed on {mk6.host}, sent '{tx}', received '{rx}'".format(
+			  mk6=self,tx=tx,rx=rx))
+
+		# cplane error should log, without raising error
+		if qr.cprc != CPLANE_SUCCESS:
+			self.logger.error("cplane response code {qr.cprc}, full response '{qr!r}'".format(
+			  qr=qr))
+
+		return qr
 
 	def _daclient_set(self, cmd, *args):
-		return self._daclient_call("=", cmd, *args)
+		rx, tx = self._daclient_call("=", cmd, *args)
+
+		self.logger.debug("Sent '{tx}', got back '{rx}'".format(tx=tx,rx=rx))
+
+		sr = CommandResponse.from_string(rx)
+
+		# VSI error should raise exception
+		if not sr.rc == VSI_SUCCESS:
+			raise RuntimeError("Command failed on {mk6.host}, sent '{tx}', received '{rx}'".format(
+			  mk6=self,tx=tx,rx=rx))
+
+		# cplane error should log, without raising error
+		if sr.cprc != CPLANE_SUCCESS:
+			self.logger.error("cplane response code {sr.cprc}, full response '{sr!r}'".format(
+			  sr=sr))
+
+		return sr
 
 	def _python_call(self, py_code):
 		# Excute Python source in py_code and return stdout
