@@ -35,15 +35,43 @@ class Backend(CheckingDevice):
 	def setup(self):
 		# R2DBE: pre-config checks, then setup, then post-config checks
 		self.r2dbe.pre_config_checks()
+		ce_count = 0
+		for cr in self.r2dbe.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} pre-config critical errors for {r2}, aborting setup for backend {be}".format(
+			  ce=ce_count, r2=self.r2dbe, be=self))
 		self.r2dbe.setup(self.station, [sp.ifs for sp in self.signal_paths],
 		  [sp.ethrt for sp in self.signal_paths])
 		self.r2dbe.post_config_checks()
+		ce_count = 0
+		for cr in self.r2dbe.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
+			  ce=ce_count, r2=self.r2dbe, be=self))
 
 		# Mark6: pre-config checks, then setup, then post-config checks
 		self.mark6.pre_config_checks()
+		ce_count = 0
+		for cr in self.mark6.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
+			  ce=ce_count, m6=self.mark6.host, be=self))
 		self.mark6.setup(self.station, [sp.ethrt for sp in self.signal_paths],
 		  [sp.modsg for sp in self.signal_paths])
 		self.mark6.post_config_checks()
+		ce_count = 0
+		for cr in self.mark6.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
+			  ce=ce_count, m6=self.mark6.host, be=self))
 
 class Station(CheckingDevice):
 
