@@ -672,14 +672,12 @@ class Mark6(CheckingDevice):
 		# Do super's pre-config checks first
 		super(Mark6, self).pre_config_checks()
 
-		# Define expected results for some checks
-		LSSCSI_DISKS = 32
-		NTPQ_MAX_OFFSET = 0.100
-
 		# Compile the checklist
 		checklist = [
-		  ("lsscsi returns a total of {num} data disks".format(num=LSSCSI_DISKS), self._count_disks, LSSCSI_DISKS, self.CHK_EQ, True),
-		  ("ntpq shows system peer with less than {off} seconds offset".format(off=NTPQ_MAX_OFFSET), self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, True),
+		  ("lsscsi returns a total of {num} data disks".format(num=LSSCSI_DISKS),
+		    self._count_disks, LSSCSI_DISKS, self.CHK_EQ, True),
+		  ("ntpq shows system peer with less than {off} seconds offset".format(off=NTPQ_MAX_OFFSET),
+		    self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, True),
 		  ("dplane is running", self._dplane_running, None, None, True),
 		  ("cplane is running", self._cplane_running, None, None, True),
 		]
