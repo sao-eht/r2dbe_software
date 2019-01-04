@@ -137,6 +137,8 @@ class Station(CheckingDevice):
 		backends = {}
 		for be in avail_backends:
 
+			r2dbe_id = scp.backend_r2dbe(be)
+			mark6_id = scp.backend_mark6(be)
 			r2dbe = R2dbe(r2dbe_id, tell=tell, ask=ask)
 			mark6 = Mark6(mark6_id, tell=tell, ask=ask)
 			signal_paths = [None]*R2DBE_NUM_INPUTS
