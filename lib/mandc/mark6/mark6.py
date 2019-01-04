@@ -506,24 +506,85 @@ class Mark6(CheckingDevice):
 
 		return sresp.cprc == CPLANE_SUCCESS
 
-		# Mount the modules
-		if not self.mount_modules(grp=all_mods):
-			self.logger.error("Could not mount modules {mods}".format(mods=all_mods))
+	def config_object(self, cfg):
+		self._station = cfg.station
+		self._input_streams = cfg.input_streams
 
-		# Get the inputs / outputs
-		throughputs = []
-		for inp, outp in zip(inputs, outputs): #@test@MARK6_INPUTS:!#
-			eth = inp.dst
-			iface = self.get_mac_ip_iface(eth.mac, eth.ip)
-			mod = outp
-			throughputs.append({
-			  "eth": eth,
-			  "iface": iface,
-			  "mod": mod,
-			})
+	def config_device(self, cfg):
 
-		# Define input streams
-		self.input_streams(throughputs)
+		# Get modules in proper state
+		self.logger.info("Attempting to put modules in closed unprotected state")
+						#~ # Check if proper grouping...
+						#~ proper_grouping = True
+						#~ for m in MARK6_MODULES:
+							#~ mstat = self.get_module_status(m)
+							#~ proper_grouping = proper_grouping and (mstat.group_ref == GROUP_REF)
+						#~ if not proper_grouping:
+							#~ # ...if not, re-initialize...
+							#~ self.logger.warning("Modules not grouped properly, re-initializing and grouping")
+							#~ for m in MARK6_MODULES:
+								#~ mstat = self.get_module_status(m)
+								#~ self.logger.info("Initializing module {m} with MSN '{e}'".format(
+								  #~ m=m, e=mstat.MSN))
+								#~ self.mod_init(m, mstat.MSN)
+
+		if self.compare_module_dual_status(s1="initialized"):
+			self.group_new()
+
+		if self.compare_module_dual_status(s1="unmounted"):
+			self.group_mount()
+
+		if self.compare_module_dual_status(s1="open"):
+			self.group_close()
+
+		if self.compare_module_dual_status(s1="closed"):
+			if self.compare_module_dual_status(s2="protected"):
+				self.group_unprotect()
+
+		# If there are any input streams, delete them
+		self.logger.info("Removing existing input streams if any")
+		for input_stream in self.get_input_streams():
+			self.delete_input_stream(input_stream.label)
+
+		# Add input streams and commit
+		self.logger.info("Adding and committing new input streams")
+		self.add_input_stream(cfg.input_streams[0])
+		self.add_input_stream(cfg.input_streams[1])
+		self.commit_input_streams()
+
+		# Open modules
+		self.logger.info("Open modules for recording")
+		self.group_open()
+
+	def setup(self, station, inputs, outputs, tell=None, ask=None):
+
+		# Create Mark6Config from the given parameters
+		iface0 = self.get_mac_ip_iface(inputs[0].dst.mac, inputs[0].dst.ip)
+		input_stream0 = InputStream.from_eth_iface_mod("{sc}0".format(sc=station),
+		  inputs[0], iface0, outputs[0])
+		iface1 = self.get_mac_ip_iface(inputs[1].dst.mac, inputs[1].dst.ip)
+		input_stream1 = InputStream.from_eth_iface_mod("{sc}1".format(sc=station),
+		  inputs[1], iface1, outputs[1])
+		mc = Mark6Config(station, input_stream0, input_stream1)
+
+		# Set the object configuration
+		self.config_object(mc)
+
+		# Check if the device config matches the object
+		if self.device_matches_object():
+			self.logger.info("Device configuration {name} matches specification".format(
+			  name=self.host))
+			if not self.ask("Device configuration for {name} matches specification. Overwrite?".format(
+				  name=self.host)):
+				self.logger.info("Device configuration for {name} will be left unaltered".format(
+					  name=self.host))
+				return
+			else:
+				self.logger.info("Device configuration for {name} will be overwritten".format(
+				  name=self.host))
+
+		# If device config does not match object, or ask response said to overwrite
+		self.config_device(mc)
 
 	def _count_disks(self):
 		"""Return number of disks found by lsscsi minus 1 system disk"""
@@ -565,6 +626,46 @@ class Mark6(CheckingDevice):
 		rc, stdo, stde = self._system_call("pgrep cplane")
 
 		return rc == 0
+
+	@property
+	def device_is_configured(self):
+		"""Check if the device is configured.
+
+		For a Mark6 device this is True if all of the following conditions are
+		met:
+		  1. The modules are in open-ready state
+		  2. Exactly two input streams exist
+		"""
+
+		# Modules should be in open-ready state
+		if not self.compare_module_dual_status(s1="open", s2="ready"):
+			return False
+
+		# Input streams should exist
+		if len(self.get_input_streams()) != 2:
+			return False
+
+		return True
+
+	@property
+	def object_config(self):
+		try:
+			rc = Mark6Config(self._station, self._input_streams[0],
+			  self._input_streams[1])
+			return rc
+		except:
+			return None
+
+	@property
+	def device_config(self):
+		try:
+			input_streams = self.get_input_streams()
+			# Station code is first two characters in input_stream label
+			station = input_streams[0].label[:2]
+			rc = Mark6Config(station, input_streams[0], input_streams[1])
+			return rc
+		except:
+			return None
 
 	def pre_config_checks(self):
 
