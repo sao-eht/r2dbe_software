@@ -116,6 +116,17 @@ class CheckingDevice(object):
 		# Tell the outcome
 		self.tell(result)
 
+		# Log the outcome if possible
+		if hasattr(self, "logger"):
+			outcome = "passed" if result.result else "failed"
+			critical = "ritical c" if result.critical else ""
+			log = self.logger.info
+			if not result.result:
+				log = self.logger.warning
+				if result.critical:
+					log = self.logger.error
+			log("C{c}heck {o}: '{d}'".format(c=critical,o=outcome,d=result.description))
+
 		# Add outcome to results list
 		self._check_results.append(result)
 
