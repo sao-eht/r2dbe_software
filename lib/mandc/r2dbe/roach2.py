@@ -970,27 +970,29 @@ class R2dbe(Roach2):
 		  4. VDIF transmission is enabled
 		"""
 
-		configured = True
-
 		# FPGA should be running the correct bitcode
-		configured = configured and self._running_correct_bitcode()
+		if not self._running_correct_bitcode():
+			return False
 
 		# for each input, ...
 		for ii in R2DBE_INPUTS:
 			# ... ADC should be the input data source
-			configured = configured and self.get_input_data_source(ii) == R2DBE_INPUT_DATA_SOURCE_ADC
+			if not self.get_input_data_source(ii) == R2DBE_INPUT_DATA_SOURCE_ADC:
+				return False
 
 		# for each output, ...
 		for ii in R2DBE_OUTPUTS:
 
 			# ... VDIF data mode should give (True, True, True)
 			for rt in self.get_vdif_data_mode(ii):
-				configured = configured and rt
+				if not rt:
+					return False
 
 			# ... VDIF transmission should be enabled
-			configured = configured and self.vdif_transmission_enabled(ii)
+			if not self.vdif_transmission_enabled(ii):
+				return False
 
-		return configured
+		return True
 
 	@property
 	def object_config(self):
