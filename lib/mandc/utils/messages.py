@@ -5,7 +5,7 @@ class TerminalMessenger(object):
 	BOLD = "\033[1m"
 	ENDC = "\033[0m"
 
-	MAXLEN = 72
+	MAXLEN = 94
 
 	@classmethod
 	def okay(cls, text):
