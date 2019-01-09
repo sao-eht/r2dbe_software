@@ -7,9 +7,7 @@ import sys
 
 from numpy import log10, sqrt
 
-from mandc.r2dbe import R2dbe, R2DBE_INPUTS
-
-IDEAL_THRESHOLD = 30
+from mandc.r2dbe import R2dbe, R2DBE_INPUTS, R2DBE_IDEAL_2BIT_THRESHOLD
 
 def _configure_logging(logfilename=None, verbose=None):
 	# Set up root logger
@@ -90,7 +88,7 @@ if __name__ == "__main__":
 	logger.info("Thresholds for {host!r} set to if0={th[0]}, if1={th[1]}".format(host=r2dbe, th=th))
 
 	# Estimate required change in input power for optimal setting
-	d_pwr = [(IDEAL_THRESHOLD / (1.0 * t))**2 for t in th]
+	d_pwr = [(R2DBE_IDEAL_2BIT_THRESHOLD / (1.0 * t))**2 for t in th]
 	d_pwr_dB = [10.0 * log10(d) for d in d_pwr]
 	logger.info("Recommended change in input power for {host!r} is if0 = {dp[0]:+.2f} dB, if1 = {dp[1]:+.2f} dB".format(
 	  host=r2dbe, dp=d_pwr_dB))
