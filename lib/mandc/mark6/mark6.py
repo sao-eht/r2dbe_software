@@ -104,7 +104,7 @@ class InputStream(object):
 		self._payload_offset = int(payload_offset)
 		self._psn_offset = int(psn_offset)
 		self._iface_id = iface_id
-		self._filter_address = filter_address,
+		self._filter_address = filter_address
 		self._portno = int(portno)
 		self._subgroup = subgroup
 
@@ -156,7 +156,7 @@ class InputStream(object):
 	@property
 	def params(self):
 		return [self.label, self.data_format, self.payload_size, self.payload_offset,
-		  self.psn_offset, self.iface_id, self.portno, self.subgroup]
+		  self.psn_offset, self.iface_id, self.filter_address, self.portno, self.subgroup]
 
 	@property
 	def label(self):
