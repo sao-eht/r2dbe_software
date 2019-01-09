@@ -530,6 +530,41 @@ class Mark6(CheckingDevice):
 
 		return sresp.cprc == CPLANE_SUCCESS
 
+	def enqueue_record(self, length, start=None, exp="exp", station="XX", scan=None,
+	  rate_GBps=2):
+		# Set the recording start time
+		utc_now = datetime.utcnow()
+		if type(start) is int:
+			# Start-time is offset in seconds
+			start = utc_now + timedelta(seconds=start)
+		if type(start) is not datetime:
+			self.logger.error(
+			  "Expect recording start time to be integer or datetime, but found {typ}".format(
+			  typ=type(start)))
+			return False
+
+		# Check that start time is in the future
+		if start <= utc_now:
+			self.logger.error("Start time {s} not in future, it is now {n}".format(
+			  s=start, n=utc_now))
+			return False
+
+		# Set automatic scan name if necessary
+		if scan is None:
+			scan = start.strftime("%jd-%Hh%Mm%Ss")
+
+		# Issue record command
+		params = [start.strftime("%Yy%jd%Hh%Mm%Ss"), length, length*rate_GBps,
+		  scan, exp, station]
+		sresp = self._daclient_set("record", *params)
+
+		return sresp.cprc == CPLANE_SUCCESS
+
+	def dequeue_record(self):
+		sresp = self._daclient_set("record", "off")
+
+		return sresp.cprc == CPLANE_SUCCESS
+
 	def config_object(self, cfg):
 		self._station = cfg.station
 		self._input_streams = cfg.input_streams
