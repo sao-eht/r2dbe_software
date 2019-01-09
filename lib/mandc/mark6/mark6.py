@@ -698,12 +698,12 @@ class Mark6(CheckingDevice):
 
 		# Compile the checklist
 		checklist = [
-		  ("lsscsi returns a total of {num} data disks".format(num=LSSCSI_DISKS),
+		  ("lsscsi should return a total of {num} data disks".format(num=LSSCSI_DISKS),
 		    self._count_disks, LSSCSI_DISKS, self.CHK_EQ, True),
-		  ("ntpq shows system peer with less than {off} seconds offset".format(off=NTPQ_MAX_OFFSET),
-		    self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, True),
-		  ("dplane is running", self._dplane_running, None, None, True),
-		  ("cplane is running", self._cplane_running, None, None, True),
+		  ("ntpq should show system peer with less than {off} seconds offset".format(off=NTPQ_MAX_OFFSET),
+		    self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, False),
+		  ("dplane should be running", self._dplane_running, None, None, True),
+		  ("cplane should be running", self._cplane_running, None, None, True),
 		]
 
 		# Run this class's checklist
@@ -720,10 +720,10 @@ class Mark6(CheckingDevice):
 		eth1 = self.object_config.input_streams[1].iface_id
 		port1 = self.object_config.input_streams[1].portno
 		checklist = [
-		  ("packets received on interace {iface}".format(iface=eth0),
+		  ("packets should be received on interace {iface}".format(iface=eth0),
 		    lambda: self.capture_vdif(eth0, port0), None, None, True),
-		  ("packets received on interace {iface}".format(iface=eth1),
-		    lambda: self.capture_vdif(eth1, port1), None, None, True)
+		  ("packets should be received on interace {iface}".format(iface=eth1),
+		    lambda: self.capture_vdif(eth1, port1), None, None, True),
 		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
 		    iface=eth0, off=VV_MAX_OFFSET), lambda: self.vv_check(eth0, port0), None,
 		    None, False),
