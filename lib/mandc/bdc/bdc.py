@@ -294,6 +294,26 @@ class BDC(CheckingDevice):
 
 		return float(nstr)
 
+	def adjust_attenuator(self, delta, pol, subband, band=None):
+		# Compute requested new value
+		old = self.get_attenuator(pol, subband, band=band)
+		new = old + delta
+
+		# Saturate at extrema
+		if new < ATTENUATOR_MIN:
+			self.logger.warning(
+			  "Attenuator adjustment extends below minimum ({new} < {mn}), will set to minimum".format(
+			  new=new, mn=ATTENUATOR_MIN))
+			new = ATTENUATOR_MIN
+		if new > ATTENUATOR_MAX:
+			self.logger.warning(
+			  "Attenuator adjustment extends above maximum ({new} > {mx}), will set to maximum".format(
+			  new=new, mx=ATTENUATOR_MAX))
+			new = ATTENUATOR_MAX
+
+		# Set level
+		self.set_attenuator(new, pol, subband, band=band)
+
 	def locked(self):
 		tstr = self._query(CMD_LOCK, rtype=QUERY_BY_TEXT)
 
