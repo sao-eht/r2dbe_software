@@ -145,12 +145,12 @@ class Station(CheckingDevice):
 				avail = False
 
 			r2dbe_id = scp.backend_r2dbe(be)
-			if not R2dbe.is_available(r2dbe_id):
+			if not R2dbe.is_available(r2dbe_id, tell=tell):
 				module_logger.error("Backend device {name} is not available.".format(name=r2dbe_id))
 				avail = False
 
 			mark6_id = scp.backend_mark6(be)
-			if not Mark6.is_available(mark6_id):
+			if not Mark6.is_available(mark6_id, tell=tell):
 				module_logger.error("Backend device {name} is not available.".format(name=mark6_id))
 				avail = False
 
