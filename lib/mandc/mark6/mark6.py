@@ -580,7 +580,7 @@ class Mark6(CheckingDevice):
 		self.logger.info("Open modules for recording")
 		self.group_open()
 
-	def setup(self, station, inputs, outputs, tell=None, ask=None):
+	def setup(self, station, inputs, outputs):
 
 		# Create Mark6Config from the given parameters
 		iface0 = self.get_mac_ip_iface(inputs[0].dst.mac, inputs[0].dst.ip)

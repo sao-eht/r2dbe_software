@@ -16,8 +16,9 @@ module_logger = logging.getLogger(__name__)
 
 class Backend(CheckingDevice):
 
-	def __init__(self, name, station, r2dbe=None, mark6=None, signal_paths=[SignalPath()],
-	  parent_logger=module_logger, tell=None, ask=None):
+	def __init__(self, name, station, bdc=None, r2dbe=None, mark6=None, signal_paths=[SignalPath()],
+	  parent_logger=module_logger, **kwargs):
+		super(Backend, self).__init__(None, **kwargs)
 		self.name = name
 		self.station = station
 		self.r2dbe = r2dbe
@@ -75,8 +76,8 @@ class Backend(CheckingDevice):
 
 class Station(CheckingDevice):
 
-	def __init__(self, host, station, backends, parent_logger=module_logger, ask=None, tell=None):
-		super(Station, self).__init__(host)
+	def __init__(self, host, station, backends, parent_logger=module_logger, **kwargs):
+		super(Station, self).__init__(host, **kwargs)
 		self.station = station
 		self.backends = backends
 		self.logger = logging.getLogger("{name}[station={station}]".format(name=".".join((parent_logger.name, 
