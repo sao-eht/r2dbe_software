@@ -11,6 +11,7 @@ from mark6 import Mark6
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup, CheckingDevice
 from r2dbe import R2DBE_INPUTS, R2DBE_NUM_INPUTS, R2dbe
 from utils import ExceptingThread
+from bdc import BDC, BAND_4TO8, BAND_5TO9
 
 module_logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class Backend(CheckingDevice):
 		super(Backend, self).__init__(None, **kwargs)
 		self.name = name
 		self.station = station
+		self.bdc = bdc
 		self.r2dbe = r2dbe
 		self.mark6 = mark6
 		self.signal_paths = signal_paths
@@ -34,6 +36,25 @@ class Backend(CheckingDevice):
 		return repr_str.format(name=self.name)
 
 	def setup(self):
+		# BDC: pre-config checks, then setup, then post-config checks
+		self.bdc.pre_config_checks()
+		ce_count = 0
+		for cr in self.bdc.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} pre-config critical errors for {bdc}, aborting setup for backend {be}".format(
+			  ce=ce_count, bdc=self.bdc, be=self))
+		self.bdc.setup(BAND_5TO9)
+		self.bdc.post_config_checks()
+		ce_count = 0
+		for cr in self.bdc.check_results:
+			if not cr.result and cr.critical:
+				ce_count += 1
+		if ce_count > 0:
+			raise RuntimeError("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
+			  ce=ce_count, bdc=self.bdc, be=self))
+
 		# R2DBE: pre-config checks, then setup, then post-config checks
 		self.r2dbe.pre_config_checks()
 		ce_count = 0
@@ -118,6 +139,11 @@ class Station(CheckingDevice):
 
 			avail = True
 
+			bdc_id = scp.backend_bdc(be)
+			if not BDC.is_available(bdc_id, tell=tell):
+				module_logger.error("Backend device {name} is not available.".format(name=bdc_id))
+				avail = False
+
 			r2dbe_id = scp.backend_r2dbe(be)
 			if not R2dbe.is_available(r2dbe_id):
 				module_logger.error("Backend device {name} is not available.".format(name=r2dbe_id))
@@ -138,8 +164,10 @@ class Station(CheckingDevice):
 		backends = {}
 		for be in avail_backends:
 
+			bdc_id = scp.backend_bdc(be)
 			r2dbe_id = scp.backend_r2dbe(be)
 			mark6_id = scp.backend_mark6(be)
+			bdc = BDC(bdc_id, tell=tell, ask=ask)
 			r2dbe = R2dbe(r2dbe_id, tell=tell, ask=ask)
 			mark6 = Mark6(mark6_id, tell=tell, ask=ask)
 			signal_paths = [None]*R2DBE_NUM_INPUTS
@@ -157,8 +185,8 @@ class Station(CheckingDevice):
 				signal_paths[inp] = SignalPath(if_signal=ifs, eth_route=eth_rt, mod_subgroup=mods)
 
 			# Instantiate backend and add
-			backends[be] = Backend(be, station, r2dbe=r2dbe, mark6=mark6, signal_paths=signal_paths,
-			  tell=tell, ask=ask)
+			backends[be] = Backend(be, station, bdc=bdc, r2dbe=r2dbe, mark6=mark6,
+			  signal_paths=signal_paths, tell=tell, ask=ask)
 
 		return cls("localhost", station, backends, tell=tell, ask=ask)
 

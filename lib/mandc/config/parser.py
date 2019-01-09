@@ -97,6 +97,10 @@ class StationConfigParser(RawConfigParser, object):
 
 		return [wbe.strip() for wbe in val.strip().split(',')]
 
+	def backend_bdc(self, backend):
+
+		return self.get(backend, BACKEND_OPTION_BDC)
+
 	def backend_r2dbe(self, backend):
 
 		return self.get(backend, BACKEND_OPTION_R2DBE)
@@ -210,6 +214,7 @@ class StationConfigParser(RawConfigParser, object):
 
 		# Check for these once-off options
 		for opt in [
+		  BACKEND_OPTION_BDC,
 		  BACKEND_OPTION_R2DBE,
 		  BACKEND_OPTION_MARK6,
 		  ]:
