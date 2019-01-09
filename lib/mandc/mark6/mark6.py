@@ -218,6 +218,10 @@ class Mark6Config(object):
 				return False
 		return True
 
+	def __repr__(self):
+		return "{s!r};{i0!r};{i1!r}".format(s=self.station,
+		  i0=self._input_streams[0], i1=self._input_streams[1])
+
 class Mark6(CheckingDevice):
 
 	def __init__(self, host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger, **kwargs):
