@@ -406,6 +406,15 @@ class Mark6(CheckingDevice):
 
 		return (tv - t0).total_seconds(), margin
 
+	def vv_check(self, iface, port):
+		res = self.vv_proxy(iface, port)
+		if res is not None:
+			delta, sigma = res
+			if abs(delta) <= VV_MAX_OFFSET:
+				return True
+
+		return False
+
 	def get_iface_mac_ip(self, iface):
 		code_str = "" \
 		  "from netifaces import ifaddresses\n" \
@@ -715,6 +724,12 @@ class Mark6(CheckingDevice):
 		    lambda: self.capture_vdif(eth0, port0), None, None, True),
 		  ("packets received on interace {iface}".format(iface=eth1),
 		    lambda: self.capture_vdif(eth1, port1), None, None, True)
+		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
+		    iface=eth0, off=VV_MAX_OFFSET), lambda: self.vv_check(eth0, port0), None,
+		    None, False),
+		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
+		    iface=eth1, off=VV_MAX_OFFSET), lambda: self.vv_check(eth1, port1), None,
+		    None, False)
 		]
 
 		# Run this class's checklist
