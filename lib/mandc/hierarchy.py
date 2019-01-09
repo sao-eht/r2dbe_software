@@ -166,11 +166,27 @@ class Station(CheckingDevice):
 		# Initialize queue to keep possible exceptions
 		exc_queue = Queue()
 
-		# Start each backend in a separate thread
-		threads = [ExceptingThread(exc_queue, target=be.setup, name=be.name)
-		  for be in zip(*self.backends.items())[1]]
-		[th.start() for th in threads]
-		[th.join() for th in threads]
+		# If no user-input required, start backends in parallel threads
+		if self.ask is None:
+			threads = [ExceptingThread(exc_queue, target=be.setup, name=be.name)
+			  for be in zip(*self.backends.items())[1]]
+			[th.start() for th in threads]
+			[th.join() for th in threads]
+		# If user-input required, then backends need setting up in parallel
+		else:
+			for be in zip(*self.backends.items())[1]:
+				try:
+					be.setup()
+				except Exception as ex:
+					# Get last exception
+					exc = sys.exc_info()
+
+					# Log occurence
+					exc_str = format_exception_only(*exc[:2])
+					exc_lines = format_exception(*exc)
+					self.logger.error(
+					  "Encountered an exception '{ex}' during setup of backend '{be}', traceback follows:\n{tb}".format(
+					  ex=exc_str, be=be, tb="".join(exc_lines)))
 
 		# Check if any of the threads encountered an exception
 		num_errors = 0

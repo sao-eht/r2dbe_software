@@ -5,19 +5,25 @@ import os.path
 import sys
 
 from mandc import Station
+from mandc.utils import TerminalMessenger
 
 _default_log_basename = os.path.extsep.join([os.path.basename(os.path.splitext(__file__)[0]), "log"])
 _default_log = os.path.sep.join([os.path.expanduser("~"), "log",_default_log_basename])
 
-def _configure_logging(logfilename=None, verbose=None):
+def _configure_logging(logfilename=None, verbose=None, stdout_logger=True):
 	# Set up root logger
 	logger = logging.getLogger()
 	logger.setLevel(logging.INFO)
 
-	# Always add logging to stdout
-	stdout_handler = logging.StreamHandler(sys.stdout)
-	all_handlers = [stdout_handler]
-	# And optionally to file
+	all_handlers = []
+
+	# Optionally log to stdout
+	stdout_handler = None
+	if stdout_logger:
+		stdout_handler = logging.StreamHandler(sys.stdout)
+		all_handlers.append(stdout_handler)
+	# Optionally log to file
+	file_handler = None
 	if logfilename:
 		file_handler = logging.FileHandler(logfilename, mode="a")
 		all_handlers.append(file_handler)
@@ -34,9 +40,11 @@ def _configure_logging(logfilename=None, verbose=None):
 		# First set DEBUG on root logger
 		logger.setLevel(logging.DEBUG)
 		# Then revert to INFO on 0th handler (i.e. stdout)
-		all_handlers[0].setLevel(logging.INFO)
+		if stdout_handler is not None:
+			stdout_handler.setLevel(logging.INFO)
 		# Finally DEBUG again on 1th handler (file if it exists, otherwise stdout again)
-		all_handlers[-1].setLevel(logging.DEBUG)
+		if file_handler is not None:
+			file_handler.setLevel(logging.DEBUG)
 
 	# Create and set formatters
 	formatter = logging.Formatter('%(name)-30s: %(asctime)s : %(levelname)-8s %(message)s')
@@ -64,10 +72,14 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	# Configure logging
-	logger = _configure_logging(logfilename=args.log, verbose=args.verbose)
+	logger = _configure_logging(logfilename=args.log, verbose=args.verbose,
+	  stdout_logger=False)
+
+	# Configure UI
+	tm = TerminalMessenger()
 
 	# Parse configuration file
-	station_backend = Station.from_file(args.conf)
+	station_backend = Station.from_file(args.conf, tell=tm.tell, ask=tm.ask)
 
 	# Set up
 	station_backend.setup()
