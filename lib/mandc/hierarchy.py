@@ -32,7 +32,7 @@ class Backend(CheckingDevice):
 		  r2dbe=self.r2dbe.host, mark6=self.mark6.host))
 
 	def __repr__(self):
-		repr_str = "{name}:%r>>%r" % (self.r2dbe,self.mark6.host)
+		repr_str = "{name}:|%r>>%r>>%r|" % (self.bdc,self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
 	def setup(self):
