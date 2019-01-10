@@ -17,6 +17,9 @@ class BDCConfig(object):
 	def __eq__(self, other):
 		return self.band == other.band
 
+	def __ne__(self, other):
+		return not self == other
+
 	@property
 	def band(self):
 		return self._band

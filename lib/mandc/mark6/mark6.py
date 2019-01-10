@@ -150,6 +150,9 @@ class InputStream(object):
 			return False
 		return True
 
+	def __ne__(self, other):
+		return not self == other
+
 	def __repr__(self):
 		return ":".join([str(p) for p in self.params])
 
@@ -217,6 +220,9 @@ class Mark6Config(object):
 			if o != t:
 				return False
 		return True
+
+	def __ne__(self, other):
+		return not self == other
 
 	def __repr__(self):
 		return "{s!r};{i0!r};{i1!r}".format(s=self.station,

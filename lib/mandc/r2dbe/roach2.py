@@ -64,6 +64,9 @@ class R2dbeConfig(object):
 				return False
 		return True
 
+	def __ne__(self, other):
+		return not self == other
+
 	def __str__(self):
 		return "Station: {rc.station}\n Inputs: {rc.inputs}\nOutputs: {rc.outputs}".format(rc=self)
 

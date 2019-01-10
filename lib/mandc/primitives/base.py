@@ -34,6 +34,9 @@ class Sideband(object):
 	def __eq__(self, other):
 		return self.sb == other.sb
 
+	def __ne__(self, other):
+		return not self == other
+
 class RxSideband(Sideband):
 
 	def __repr__(self):
@@ -72,6 +75,9 @@ class Polarization(object):
 	def __eq__(self, other):
 		return self.pol == other.pol
 
+	def __ne__(self, other):
+		return not self == other
+
 class IFSignal(object):
 
 	def __init__(self, receiver_sideband=None, blockdownconverter_sideband=None, polarization=None, 
@@ -100,6 +106,9 @@ class IFSignal(object):
 		  self.bdc_sb == other.bdc_sb and \
 		  self.pol == other.pol
 
+	def __ne__(self, other):
+		return not self == other
+
 class MACAddress(object):
 
 	def __init__(self, mac_int_or_str):
@@ -114,6 +123,9 @@ class MACAddress(object):
 
 	def __eq__(self, other):
 		return self.address == other.address
+
+	def __ne__(self, other):
+		return not self == other
 
 	@classmethod
 	def str2int(cls, mac_str):
@@ -135,6 +147,9 @@ class IPAddress(object):
 	def __eq__(self, other):
 		return self.address == other.address
 
+	def __ne__(self, other):
+		return not self == other
+
 	@classmethod
 	def str2int(cls, ip_str):
 		"""Convert IP address from dot-decimal notation to int"""
@@ -154,6 +169,9 @@ class Port(object):
 
 	def __eq__(self, other):
 		return self.port == other.port
+
+	def __ne__(self, other):
+		return not self == other
 
 class EthEntity(object):
 
@@ -181,6 +199,9 @@ class EthEntity(object):
 		  self.mac == other.mac and \
 		  self.port == other.port
 
+	def __ne__(self, other):
+		return not self == other
+
 class EthRoute(object):
 
 	def __init__(self, source_entity=None, destination_entity=None, parent_logger=module_logger):
@@ -193,6 +214,9 @@ class EthRoute(object):
 
 	def __eq__(self, other):
 		return self.src == other.src and self.dst == other.dst
+
+	def __ne__(self, other):
+		return not self == other
 
 class ModSubGroup(object):
 
