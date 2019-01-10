@@ -372,6 +372,9 @@ class BDC(CheckingDevice):
 		self._band = cfg.band
 
 	def config_device(self, cfg):
+		# Do super's config first
+		super(BDC, self).config_device(cfg)
+
 		self.set_band(cfg.band)
 
 	def setup(self, band):

@@ -581,6 +581,9 @@ class Mark6(CheckingDevice):
 
 	def config_device(self, cfg):
 
+		# Do super's config first
+		super(Mark6, self).config_device(cfg)
+
 		# Get modules in proper state
 		self.logger.info("Attempting to put modules in closed unprotected state")
 						#~ # Check if proper grouping...

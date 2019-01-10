@@ -897,6 +897,9 @@ class R2dbe(Roach2):
 
 	def config_device(self, cfg):
 
+		# Do super's config first
+		super(R2dbe, self).config_device(cfg)
+
 		# Program bitcode
 		bitcode_version = self._program(self.bitcode)
 		self.logger.info("Programmed bitcode '{0}' ({1})".format(self.bitcode, bitcode_version))
