@@ -213,11 +213,13 @@ class Mark6Config(object):
 
 	def __eq__(self, other):
 		if self.station != other.station:
+			module_logger.debug("Mark6Config station mismatch")
 			return False
 		ours = self.input_streams
 		theirs = other.input_streams
 		for o,t in zip(ours, theirs):
 			if o != t:
+				module_logger.debug("Mark6Config input stream mismatch")
 				return False
 		return True
 
@@ -596,16 +598,20 @@ class Mark6(CheckingDevice):
 								#~ self.mod_init(m, mstat.MSN)
 
 		if self.compare_module_dual_status(s1="initialized"):
+			self.logger.info("Found all modules initialized, forming new group")
 			self.group_new()
 
 		if self.compare_module_dual_status(s1="unmounted"):
+			self.logger.info("Found all modules unmounted, mounting")
 			self.group_mount()
 
 		if self.compare_module_dual_status(s1="open"):
+			self.logger.info("Found all modules open, closing")
 			self.group_close()
 
 		if self.compare_module_dual_status(s1="closed"):
 			if self.compare_module_dual_status(s2="protected"):
+				self.logger.info("Found all modules closed:protected, unprotecting")
 				self.group_unprotect()
 
 		# If there are any input streams, delete them
@@ -706,10 +712,12 @@ class Mark6(CheckingDevice):
 
 		# Modules should be in open-ready state
 		if not self.compare_module_dual_status(s1="open", s2="ready"):
+			self.logger.debug("Device not configured, modules not open:ready")
 			return False
 
 		# Input streams should exist
-		if len(self.get_input_streams()) != 2:
+		if len(self.get_input_streams()) != len(MARK6_INPUTS):
+			self.logger.debug("Device not configured, correct number of input streams not defined")
 			return False
 
 		return True

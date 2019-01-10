@@ -51,16 +51,19 @@ class R2dbeConfig(object):
 
 	def __eq__(self, other):
 		if self.station != other.station:
+			module_logger.debug("R2dbeConfig station mismatch")
 			return False
 		ours = self.inputs
 		theirs = other.inputs
 		for o,t in zip(ours, theirs):
 			if o != t:
+				module_logger.debug("R2dbeConfig input mismatch")
 				return False
 		ours = self.outputs
 		theirs = other.outputs
 		for o,t in zip(ours, theirs):
 			if o != t:
+				module_logger.debug("R2dbeConfig output mismatch")
 				return False
 		return True
 

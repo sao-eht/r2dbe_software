@@ -307,12 +307,12 @@ class BDC(CheckingDevice):
 		# Saturate at extrema
 		if new < ATTENUATOR_MIN:
 			self.logger.warning(
-			  "Attenuator adjustment extends below minimum ({new} < {mn}), will set to minimum".format(
+			  "Attenuator adjustment extends below minimum ({new:.1f} < {mn}), will set to minimum".format(
 			  new=new, mn=ATTENUATOR_MIN))
 			new = ATTENUATOR_MIN
 		if new > ATTENUATOR_MAX:
 			self.logger.warning(
-			  "Attenuator adjustment extends above maximum ({new} > {mx}), will set to maximum".format(
+			  "Attenuator adjustment extends above maximum ({new:.1f} > {mx}), will set to maximum".format(
 			  new=new, mx=ATTENUATOR_MAX))
 			new = ATTENUATOR_MAX
 
