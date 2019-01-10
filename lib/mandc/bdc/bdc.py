@@ -26,6 +26,8 @@ class BDCConfig(object):
 
 class BDC(CheckingDevice):
 
+	CHECK_CODE_HIGH = 3000
+
 	def __init__(self, host, parent_logger=module_logger, port=DEFAULT_PORT,
 	  timeout_after=TIMEOUT_AFTER, **kwargs):
 		super(BDC, self).__init__(host, **kwargs)
@@ -417,9 +419,15 @@ class BDC(CheckingDevice):
 		# Compile the checklist
 		checklist = [
 		  ("band {b} should be selected".format(b=BAND_5TO9), self.is_band_5to9,
-		  None, None, True),
+		    None, None, True,
+		    self.CHECK_CODE_HIGH + 61, [
+		      "Switch the BDC to the correct band",
+			  ]),
 		  ("LO should be {status}".format(status=LOCK_LOCKED), self.locked,
-		  None, None, True)
+		    None, None, True,
+		    self.CHECK_CODE_HIGH + 62, [
+		      "Check reference frequency input to BDC",
+			  ]),
 		]
 
 		# Run this class's checklist

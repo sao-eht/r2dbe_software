@@ -9,19 +9,28 @@ class CheckResult(object):
 		return self._critical
 
 	@property
+	def code(self):
+		return self._code
+
+	@property
 	def description(self):
 		return self._description
+
+	@property
+	def recommends(self):
+		return self._recommends
 
 	@property
 	def result(self):
 		return self._result
 
-	def __init__(self, desc, result, critical=False):
-		self._description = desc
-		self._result = result
-		self._critical = critical
+	@property
+	def result_string(self):
+		if self.result:
+			return "passed"
+		return "failed"
 
-	def __str__(self):
+	def _make_nice_message(self):
 		# Success get OKAY messages
 		if self.result:
 			return TerminalMessenger.okay(self.description)
@@ -33,6 +42,36 @@ class CheckResult(object):
 		# Regular failure get WARN messages
 		return TerminalMessenger.warn(self.description)
 
+	def __init__(self, desc, result, critical=False, code=None, recommends=[]):
+		self._description = desc
+		self._result = result
+		self._critical = critical
+		self._code = code
+		self._recommends = recommends
+
+	def __str__(self):
+		# Get nice message
+		txt = self._make_nice_message()
+
+		# Append code, if defined
+		if self.code is not None:
+			txt = "{txt} #{me.code:04d}".format(me=self,txt=txt)
+
+		return txt
+
+	def get_summary(self):
+		return str(self)
+
+	def get_full(self):
+		txt = "Check #{me.code} {me.result_string}, {me.description}.".format(
+		  me=self)
+		if not self.result and len(self.recommends) > 0:
+			txt = txt + " Recommended actions:"
+			for n, r in enumerate(self.recommends):
+				txt = txt + "\n   {n:2d}. {do}".format(n=1+n, do=r)
+
+		return txt
+
 	def __nonzero__(self):
 		return self._result
 
@@ -42,6 +81,8 @@ class CheckingDevice(object):
 	CHK_EQ = 1
 	CHK_LT = 2
 	CHK_GT = 3
+
+	CHECK_CODE_HIGH = 0
 
 	@classmethod
 	def is_available(cls, identifier, tell=None, critical=True):
@@ -95,23 +136,28 @@ class CheckingDevice(object):
 			# Return earliest result and remove from list
 			yield self._check_results.pop(0)
 
-	def do_check(self, msg, func, assrt=True, ctype=None, critical=False):
-		txt = "{name}: {desc}".format(name=self.host, desc=msg)
+	def do_check(self, msg, func, assrt=True, ctype=None, critical=False,
+	  code=None, recommends=[]):
+		txt = "{desc}".format(desc=msg)
 		result = None
 
 		# Perform the applicable test
 		if ctype == self.CHK:
 			# PASS on func() == True , FAIL otherwise
-			result = CheckResult(txt, func(), critical=critical)
+			result = CheckResult(txt, func(), critical=critical, code=code,
+			  recommends=recommends)
 		elif ctype == self.CHK_EQ:
 			# PASS on func() == assrt, FAIL otherwise
-			result = CheckResult(txt, func() == assrt, critical=critical)
+			result = CheckResult(txt, func() == assrt, critical=critical,
+			  code=code, recommends=recommends)
 		elif ctype == self.CHK_LT:
 			# PASS on func() < assrt, FAIL otherwise
-			result = CheckResult(txt, func() < assrt, critical=critical)
+			result = CheckResult(txt, func() < assrt, critical=critical,
+			  code=code, recommends=recommends)
 		elif ctype == self.CHK_GT:
 			# PASS on func() > assrt, FAIL otherwise
-			result = CheckResult(txt, func() > assrt, critical=critical)
+			result = CheckResult(txt, func() > assrt, critical=critical,
+			  code=code, recommends=recommends)
 
 		# Tell the outcome
 		self.tell(result)
@@ -134,8 +180,8 @@ class CheckingDevice(object):
 		return result
 
 	def do_checklist(self, checklist):
-		for msg, func, assrt, ctype, critical in checklist:
-			self.do_check(msg, func, assrt=assrt, ctype=ctype, critical=critical)
+		for check in checklist:
+			self.do_check(*check)
 
 	def pre_config_checks(self):
 		"""Do pre-configuration checks.

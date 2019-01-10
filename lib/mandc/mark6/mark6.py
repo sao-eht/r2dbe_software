@@ -230,6 +230,8 @@ class Mark6Config(object):
 
 class Mark6(CheckingDevice):
 
+	CHECK_CODE_HIGH = 5000
+
 	def __init__(self, host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger, **kwargs):
 		super(Mark6, self).__init__(host, **kwargs)
 		self.user = mark6_user
@@ -740,11 +742,26 @@ class Mark6(CheckingDevice):
 		# Compile the checklist
 		checklist = [
 		  ("lsscsi should return a total of {num} data disks".format(num=LSSCSI_DISKS),
-		    self._count_disks, LSSCSI_DISKS, self.CHK_EQ, True),
+		    self._count_disks, LSSCSI_DISKS, self.CHK_EQ, True,
+		    self.CHECK_CODE_HIGH + 21, [
+		      "Check that all modules properly inserted and keyed on",
+		      "Check that module cables properly attached",
+		      "Try to key off all modules, then key them back on using recommended procedure",
+		      "Key off all modules, reboot Mark6, then key them back on",]),
 		  ("ntpq should show system peer with less than {off} seconds offset".format(off=NTPQ_MAX_OFFSET),
-		    self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, False),
-		  ("dplane should be running", self._dplane_running, None, None, True),
-		  ("cplane should be running", self._cplane_running, None, None, True),
+		    self._ntpq_pn, NTPQ_MAX_OFFSET, self.CHK_LT, False,
+		    self.CHECK_CODE_HIGH + 22, [
+		      "Restart NTP service on Mark6",
+		      "Check that Mark6 /etc/ntp.conf has control computer as a server",]),
+		  ("dplane should be running", self._dplane_running, None, None, True,
+		    self.CHECK_CODE_HIGH + 23, [
+		      "Try 'ps aux | grep dplane' on Mark6",
+		      "Try '/etc/init.d/dplane start' as root on Mark6",]),
+		  ("cplane should be running", self._cplane_running, None, None, True,
+		    self.CHECK_CODE_HIGH + 24, [
+		      "Try 'ps aux | grep cplane' on Mark6",
+		      "Make sure dplane is running, then try '/etc/init.d/cplane start' as root on Mark6",]
+		    ),
 		]
 
 		# Run this class's checklist
@@ -762,15 +779,19 @@ class Mark6(CheckingDevice):
 		port1 = self.object_config.input_streams[1].portno
 		checklist = [
 		  ("packets should be received on interace {iface}".format(iface=eth0),
-		    lambda: self.capture_vdif(eth0, port0), None, None, True),
+		    lambda: self.capture_vdif(eth0, port0), None, None, True,
+		    self.CHECK_CODE_HIGH + 61),
 		  ("packets should be received on interace {iface}".format(iface=eth1),
-		    lambda: self.capture_vdif(eth1, port1), None, None, True),
+		    lambda: self.capture_vdif(eth1, port1), None, None, True,
+		    self.CHECK_CODE_HIGH + 61),
 		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
 		    iface=eth0, off=VV_MAX_OFFSET), lambda: self.vv_check(eth0, port0), None,
-		    None, False),
+		    None, False,
+		    self.CHECK_CODE_HIGH + 62),
 		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
 		    iface=eth1, off=VV_MAX_OFFSET), lambda: self.vv_check(eth1, port1), None,
-		    None, False)
+		    None, False,
+		    self.CHECK_CODE_HIGH + 62)
 		]
 
 		# Run this class's checklist

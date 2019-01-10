@@ -72,6 +72,8 @@ class R2dbeConfig(object):
 
 class Roach2(CheckingDevice):
 
+	CHECK_CODE_HIGH = 4000
+
 	def __init__(self, host, parent_logger=module_logger, retry_snaps=3, **kwargs):
 		super(Roach2, self).__init__(host, **kwargs)
 		self.logger = logging.getLogger("{name}[host={host!r}]".format(name=".".join((parent_logger.name, 
@@ -218,7 +220,8 @@ class Roach2(CheckingDevice):
 
 		# Compile the checklist
 		checklist = [
-		  ("FPGA is programmed", self._fpga_programmed, None, None, True),
+		  ("FPGA is programmed", self._fpga_programmed, None, None, True,
+		  self.CHECK_CODE_HIGH + 61, []),
 		]
 
 		# Run this class's checklist
@@ -904,7 +907,8 @@ class R2dbe(Roach2):
 		self.logger.info("Performing ADC interface calibration")
 		for ii in R2DBE_INPUTS:
 			self.do_check("ADC{0} interface calibration".format(ii),
-			  partial(self.adc_interface_cal,ii), None, None, False)
+			  partial(self.adc_interface_cal,ii), None, None, False,
+			  self.CHECK_CODE_HIGH + 41, [])
 
 		# Set inputs
 		self.logger.info("Defining analog inputs")
@@ -942,7 +946,10 @@ class R2dbe(Roach2):
 		self.logger.info("Performing ADC core calibration")
 		for ii, _ in enumerate(cfg.inputs):
 			self.do_check("ADC{0} core calibration".format(ii),
-			  partial(self.adc_core_cal,ii), None, None, False)
+			  partial(self.adc_core_cal,ii), None, None, False,
+			  self.CHECK_CODE_HIGH + 42, [
+			    "Make sure the ADC is supplied with -6dBm noise-like input",
+			  ])
 
 		# Set 2-bit thresholds
 		self.logger.info("Setting 2-bit quantization thresholds")
@@ -1066,7 +1073,8 @@ class R2dbe(Roach2):
 
 		# Compile the checklist
 		checklist = [
-		  ("programmed with correct bitcode", self._running_correct_bitcode, None, None, True),
+		  ("programmed with correct bitcode", self._running_correct_bitcode, None, None, True,
+		    self.CHECK_CODE_HIGH + 61, []),
 		]
 
 		# Run this class's checklist
