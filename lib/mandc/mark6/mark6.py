@@ -617,6 +617,11 @@ class Mark6(CheckingDevice):
 				self.logger.info("Found all modules closed:protected, unprotecting")
 				self.group_unprotect()
 
+		# Modules should now be in closed:unprotected state
+		if not self.compare_module_dual_status(s1="closed",s2="unprotected"):
+			self.logger.error("Unable to put modules in closed:unprotected state, aborting setup")
+			raise RuntimeError("Failed to put modules in closed:unprotected state")
+
 		# If there are any input streams, delete them
 		self.logger.info("Removing existing input streams if any")
 		for input_stream in self.get_input_streams():
@@ -631,6 +636,11 @@ class Mark6(CheckingDevice):
 		# Open modules
 		self.logger.info("Open modules for recording")
 		self.group_open()
+
+		# Check if modules are open:ready
+		if not self.compare_module_dual_status(s1="open",s2="ready"):
+			self.logger.error("Unable to put modules in open:ready state, setup failed")
+			raise RuntimeError("Failed to put modules in open:ready state")
 
 	def setup(self, station, inputs, outputs):
 
