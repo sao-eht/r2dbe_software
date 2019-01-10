@@ -6,7 +6,8 @@ from threading import Thread
 from traceback import format_exception, format_exception_only
 from Queue import Queue
 
-from config import StationConfigParser, ValidationError, ParsingError
+from config import StationConfigParser, ValidationError, ParsingError, \
+  BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, BACKEND_OPTION_MARK6
 from mark6 import Mark6
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup, CheckingDevice
 from r2dbe import R2DBE_INPUTS, R2DBE_NUM_INPUTS, R2dbe
@@ -35,7 +36,11 @@ class Backend(CheckingDevice):
 		repr_str = "{name}:|%r>>%r>>%r|" % (self.bdc,self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
-	def setup(self):
+	def setup_bdc(self, aggr_check_fails=None):
+		if self.bdc is None:
+			self.logger.info("No BDC in configuration for this backend")
+			return
+
 		# BDC: pre-config checks, then setup, then post-config checks
 		self.bdc.pre_config_checks()
 		ce_count = 0
@@ -54,6 +59,11 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			raise RuntimeError("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
 			  ce=ce_count, bdc=self.bdc, be=self))
+
+	def setup_r2dbe(self, aggr_check_fails=None):
+		if self.r2dbe is None:
+			self.logger.info("No R2DBE in configuration for this backend")
+			return
 
 		# R2DBE: pre-config checks, then setup, then post-config checks
 		self.r2dbe.pre_config_checks()
@@ -75,6 +85,11 @@ class Backend(CheckingDevice):
 			raise RuntimeError("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
 			  ce=ce_count, r2=self.r2dbe, be=self))
 
+	def setup_mark6(self, aggr_check_fails=None):
+		if self.mark6 is None:
+			self.logger.info("No Mark6 in configuration for this backend")
+			return
+
 		# Mark6: pre-config checks, then setup, then post-config checks
 		self.mark6.pre_config_checks()
 		ce_count = 0
@@ -95,6 +110,13 @@ class Backend(CheckingDevice):
 			raise RuntimeError("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self))
 
+	def setup(self, aggr_check_fails=None):
+		self.tell("Configuring devices for {be}:".format(be=self))
+
+		self.setup_bdc(aggr_check_fails=aggr_check_fails)
+		self.setup_r2dbe(aggr_check_fails=aggr_check_fails)
+		self.setup_mark6(aggr_check_fails=aggr_check_fails)
+
 class Station(CheckingDevice):
 
 	def __init__(self, host, station, backends, parent_logger=module_logger, **kwargs):
@@ -107,7 +129,7 @@ class Station(CheckingDevice):
 		  station=self.station, be_list=", ".join(["{be!r}".format(be=be) for be in self.backends.keys()])))
 
 	@classmethod
-	def from_file(cls, filename, tell=None, ask=None):
+	def from_file(cls, filename, tell=None, ask=None, ignore_device_classes=[]):
 		# Create a parser
 		scp = StationConfigParser()
 
@@ -123,7 +145,7 @@ class Station(CheckingDevice):
 
 		# Validate the configuration
 		try:
-			scp.validate()
+			scp.validate(ignore_device_classes=ignore_device_classes)
 		except ValidationError as ve:
 			module_logger.error("{cls} raised {err} with {count} errors: {msg}".format(cls=scp.__class__.__name__,
 			  err=ve.__class__.__name__, msg=str(ve), count=ve.count))
@@ -137,25 +159,35 @@ class Station(CheckingDevice):
 		avail_backends = []
 		for be in backend_list:
 
+			if tell is not None:
+				tell("Check all devices referenced in {be} available:".format(be=be))
 			avail = True
 
-			bdc_id = scp.backend_bdc(be)
-			if not BDC.is_available(bdc_id, tell=tell):
-				module_logger.error("Backend device {name} is not available.".format(name=bdc_id))
-				avail = False
+			if BACKEND_OPTION_BDC not in ignore_device_classes:
+				bdc_id = scp.backend_bdc(be)
+				if not BDC.is_available(bdc_id, tell=tell):
+					module_logger.error("Backend device {name} is not available.".format(name=bdc_id))
+					avail = False
 
-			r2dbe_id = scp.backend_r2dbe(be)
-			if not R2dbe.is_available(r2dbe_id, tell=tell):
-				module_logger.error("Backend device {name} is not available.".format(name=r2dbe_id))
-				avail = False
+			if BACKEND_OPTION_R2DBE not in ignore_device_classes:
+				r2dbe_id = scp.backend_r2dbe(be)
+				if not R2dbe.is_available(r2dbe_id, tell=tell):
+					module_logger.error("Backend device {name} is not available.".format(name=r2dbe_id))
+					avail = False
 
-			mark6_id = scp.backend_mark6(be)
-			if not Mark6.is_available(mark6_id, tell=tell):
-				module_logger.error("Backend device {name} is not available.".format(name=mark6_id))
-				avail = False
+			if BACKEND_OPTION_MARK6 not in ignore_device_classes:
+				mark6_id = scp.backend_mark6(be)
+				if not Mark6.is_available(mark6_id, tell=tell):
+					module_logger.error("Backend device {name} is not available.".format(name=mark6_id))
+					avail = False
 
 			if avail:
+				if tell is not None:
+					tell("All devices available for {be}".format(be=be))
 				avail_backends.append(be)
+			else:
+				if tell is not None:
+					tell("One or more devices unavailable for {be}, skipping".format(be=be), exclaim=True)
 
 		# There needs to be at least one available backend
 		if len(avail_backends) < 1:
@@ -164,25 +196,35 @@ class Station(CheckingDevice):
 		backends = {}
 		for be in avail_backends:
 
-			bdc_id = scp.backend_bdc(be)
-			r2dbe_id = scp.backend_r2dbe(be)
-			mark6_id = scp.backend_mark6(be)
-			bdc = BDC(bdc_id, tell=tell, ask=ask)
-			r2dbe = R2dbe(r2dbe_id, tell=tell, ask=ask)
-			mark6 = Mark6(mark6_id, tell=tell, ask=ask)
-			signal_paths = [None]*R2DBE_NUM_INPUTS
+			bdc = None
+			if BACKEND_OPTION_BDC not in ignore_device_classes:
+				bdc_id = scp.backend_bdc(be)
+				bdc = BDC(bdc_id, tell=tell, ask=ask)
+			r2dbe = None
+			if BACKEND_OPTION_R2DBE not in ignore_device_classes:
+				r2dbe_id = scp.backend_r2dbe(be)
+				r2dbe = R2dbe(r2dbe_id, tell=tell, ask=ask)
+			mark6 = None
+			if BACKEND_OPTION_MARK6 not in ignore_device_classes:
+				mark6_id = scp.backend_mark6(be)
+				mark6 = Mark6(mark6_id, tell=tell, ask=ask)
+
+			signal_paths = []
 			for inp in R2DBE_INPUTS:
 				# Analog input
 				pol, rx_sb, bdc_sb = scp.backend_if_pol_rx_bdc(be, inp)
 				ifs = IFSignal(receiver_sideband=rx_sb, blockdownconverter_sideband=bdc_sb, polarization=pol)
-				# Ethernet routing
-				mk6_iface_name = scp.backend_if_iface(be, inp)
-				mac, ip = mark6.get_iface_mac_ip(mk6_iface_name)
-				eth_rt = R2dbe.make_default_route_from_destination(mac, ip)
-				# Module
-				mods = scp.backend_if_modsubgroup(be, inp)
+				eth_rt = None
+				mods = None
+				if mark6 is not None:
+					# Ethernet routing
+					mk6_iface_name = scp.backend_if_iface(be, inp)
+					mac, ip = mark6.get_iface_mac_ip(mk6_iface_name)
+					eth_rt = R2dbe.make_default_route_from_destination(mac, ip)
+					# Module
+					mods = scp.backend_if_modsubgroup(be, inp)
 				# Create signal path
-				signal_paths[inp] = SignalPath(if_signal=ifs, eth_route=eth_rt, mod_subgroup=mods)
+				signal_paths.append(SignalPath(if_signal=ifs, eth_route=eth_rt, mod_subgroup=mods))
 
 			# Instantiate backend and add
 			backends[be] = Backend(be, station, bdc=bdc, r2dbe=r2dbe, mark6=mark6,
@@ -204,7 +246,14 @@ class Station(CheckingDevice):
 		else:
 			for be in zip(*self.backends.items())[1]:
 				try:
-					be.setup()
+					# Do pre-config checks
+					be.pre_config_checks()
+
+					# Do setup
+					be.setup(aggr_check_fails=failed_checks)
+
+					# Do post-config checks
+					be.post_config_checks()
 				except Exception as ex:
 					# Get last exception
 					exc = sys.exc_info()

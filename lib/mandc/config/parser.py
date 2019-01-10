@@ -55,7 +55,7 @@ class StationConfigParser(RawConfigParser, object):
 		except ParsingError as pe:
 			raise pe
 
-	def validate(self):
+	def validate(self, ignore_device_classes=[]):
 
 		# Initialize a ValidationError instance
 		ve = ValidationError(self.filename)
@@ -72,7 +72,8 @@ class StationConfigParser(RawConfigParser, object):
 
 			# Check backends option
 			try:
-				self._val_global_has_backends()
+				self._val_global_has_backends(
+				  ignore_device_classes=ignore_device_classes)
 			except ValidationError as verr:
 				for err in verr.errors:
 					ve.append(str(err))
@@ -161,7 +162,7 @@ class StationConfigParser(RawConfigParser, object):
 			raise Error("Value of option '{sec}.{opt}' should be exactly two characters long (got '{val}')".format(
 			  opt=opt, sec=sec, val=station))
 
-	def _val_global_has_backends(self):
+	def _val_global_has_backends(self, ignore_device_classes=[]):
 
 		sec, opt = GLOBAL_SECTION, GLOBAL_OPTION_BACKENDS
 
@@ -198,7 +199,8 @@ class StationConfigParser(RawConfigParser, object):
 
 			# Check that this particular backend section is complete
 			try:
-				self._val_backend_complete(be)
+				self._val_backend_complete(be,
+				  ignore_device_classes=ignore_device_classes)
 			except ValidationError as verr_below:
 				for err in verr_below.errors:
 					verr.append(err)
@@ -207,17 +209,26 @@ class StationConfigParser(RawConfigParser, object):
 		if verr.count > 0:
 			raise verr
 
-	def _val_backend_complete(self, backend):
+	def _val_backend_complete(self, backend, ignore_device_classes=[]):
 
 		# Initialize ValidationError (possible multiple errors)
 		verr = ValidationError(self.filename)
 
 		# Check for these once-off options
-		for opt in [
+		all_device_classes = [
 		  BACKEND_OPTION_BDC,
 		  BACKEND_OPTION_R2DBE,
 		  BACKEND_OPTION_MARK6,
-		  ]:
+		]
+		for ignore in ignore_device_classes:
+			try:
+				self.logger.info("Ignoring device class '{cls}'".format(cls=ignore))
+				all_device_classes.remove(ignore)
+			except ValueError as ve:
+				self.logger.warning(
+				  "Asked to ignore unknown or already ignored device class '{cls}'".format(
+				  cls=ignore))
+		for opt in all_device_classes:
 			try:
 				self._val_has_option(backend, opt)
 			except Error as err:
