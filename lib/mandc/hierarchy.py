@@ -19,6 +19,8 @@ module_logger = logging.getLogger(__name__)
 
 class Backend(CheckingDevice):
 
+	CHECK_CODE_HIGH = 2000
+
 	def __init__(self, name, station, bdc=None, r2dbe=None, mark6=None, signal_paths=[SignalPath()],
 	  parent_logger=module_logger, **kwargs):
 		super(Backend, self).__init__(None, **kwargs)
@@ -119,6 +121,8 @@ class Backend(CheckingDevice):
 		self.setup_mark6(aggr_check_fails=aggr_check_fails)
 
 class Station(CheckingDevice):
+
+	CHECK_CODE_HIGH = 1000
 
 	def __init__(self, host, station, backends, parent_logger=module_logger, **kwargs):
 		super(Station, self).__init__(host, **kwargs)
