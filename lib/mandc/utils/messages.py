@@ -29,7 +29,10 @@ class TerminalMessenger(object):
 		return msg
 
 	@classmethod
-	def tell(cls, text):
+	def tell(cls, text, exclaim=False):
+		if exclaim:
+			text = "{red}{bold}{txt}{endc}".format(
+			  red=cls.FAIL,bold=cls.BOLD,txt=text,endc=cls.ENDC)
 		print text
 
 	@classmethod
