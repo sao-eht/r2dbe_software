@@ -160,18 +160,26 @@ class Backend(CheckingDevice):
 		self.bdc.pre_config_checks()
 		ce_count = 0
 		for cr in self.bdc.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} pre-config critical errors for {bdc}, aborting setup for backend {be}".format(
+			  ce=ce_count, bdc=self.bdc, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} pre-config critical errors for {bdc}, aborting setup for backend {be}".format(
 			  ce=ce_count, bdc=self.bdc, be=self))
 		self.bdc.setup(BAND_5TO9)
 		self.bdc.post_config_checks()
 		ce_count = 0
 		for cr in self.bdc.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
+			  ce=ce_count, bdc=self.bdc, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
 			  ce=ce_count, bdc=self.bdc, be=self))
 
@@ -184,9 +192,13 @@ class Backend(CheckingDevice):
 		self.r2dbe.pre_config_checks()
 		ce_count = 0
 		for cr in self.r2dbe.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} pre-config critical errors for {r2}, aborting setup for backend {be}".format(
+			  ce=ce_count, r2=self.r2dbe, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} pre-config critical errors for {r2}, aborting setup for backend {be}".format(
 			  ce=ce_count, r2=self.r2dbe, be=self))
 		self.r2dbe.setup(self.station, [sp.ifs for sp in self.signal_paths],
@@ -194,9 +206,13 @@ class Backend(CheckingDevice):
 		self.r2dbe.post_config_checks()
 		ce_count = 0
 		for cr in self.r2dbe.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
+			  ce=ce_count, r2=self.r2dbe, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
 			  ce=ce_count, r2=self.r2dbe, be=self))
 
@@ -209,9 +225,13 @@ class Backend(CheckingDevice):
 		self.mark6.pre_config_checks()
 		ce_count = 0
 		for cr in self.mark6.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
+			  ce=ce_count, m6=self.mark6.host, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self))
 		self.mark6.setup(self.station, [sp.ethrt for sp in self.signal_paths],
@@ -219,9 +239,13 @@ class Backend(CheckingDevice):
 		self.mark6.post_config_checks()
 		ce_count = 0
 		for cr in self.mark6.check_results:
+			if not cr.result and aggr_check_fails is not None:
+				aggr_check_fails[cr.code] = cr
 			if not cr.result and cr.critical:
 				ce_count += 1
 		if ce_count > 0:
+			self.tell("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
+			  ce=ce_count, m6=self.mark6.host, be=self), exclaim=True)
 			raise RuntimeError("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self))
 
@@ -251,6 +275,8 @@ class Station(CheckingDevice):
 		scp = StationConfigParser()
 
 		# Read the specified file (includes parsing checks)
+		if tell is not None:
+			tell("Processing configuration {fn}".format(fn=filename))
 		try:
 			if len(scp.read(filename)) < 1:
 				module_logger.error("Unable to read station configuration file '{0}'".format(filename))
@@ -350,17 +376,31 @@ class Station(CheckingDevice):
 		return cls(platform.node(), station, backends, tell=tell, ask=ask)
 
 	def setup(self):
-		# Initialize queue to keep possible exceptions
-		exc_queue = Queue()
-
 		# If no user-input required, start backends in parallel threads
 		if self.ask is None:
+			# Initialize queue to keep possible exceptions
+			exc_queue = Queue()
+
 			threads = [ExceptingThread(exc_queue, target=be.setup, name=be.name)
 			  for be in zip(*self.backends.items())[1]]
 			[th.start() for th in threads]
 			[th.join() for th in threads]
-		# If user-input required, then backends need setting up in parallel
+
+			# Check if any of the threads encountered an exception
+			num_errors = 0
+			while not exc_queue.empty():
+				num_errors += 1
+				name, exc = exc_queue.get_nowait()
+				exc_str = format_exception_only(*exc[:2])
+				self.logger.critical("An exception occurred during setup of backend '{0}'".format(name))
+
+			# If any errors encountered, raise exception
+			if num_errors > 0:
+				raise RuntimeError("{0} backend(s) failed setup".format(num_errors))
+
+		# If user-input required, then backends need setting up in series
 		else:
+			failed_checks = {}
 			for be in zip(*self.backends.items())[1]:
 				try:
 					# Do pre-config checks
@@ -372,6 +412,11 @@ class Station(CheckingDevice):
 					# Do post-config checks
 					be.post_config_checks()
 				except Exception as ex:
+
+					self.tell(
+					  "An exception occurred during setup of backend '{be}'".format(
+					  be=be), exclaim=True)
+
 					# Get last exception
 					exc = sys.exc_info()
 
@@ -382,14 +427,9 @@ class Station(CheckingDevice):
 					  "Encountered an exception '{ex}' during setup of backend '{be}', traceback follows:\n{tb}".format(
 					  ex=exc_str, be=be, tb="".join(exc_lines)))
 
-		# Check if any of the threads encountered an exception
-		num_errors = 0
-		while not exc_queue.empty():
-			num_errors += 1
-			name, exc = exc_queue.get_nowait()
-			exc_str = format_exception_only(*exc[:2])
-			self.logger.critical("An exception occured during setup of backend '{0}'".format(name))
-
-		# If any errors encountered, raise exception
-		if num_errors > 0:
-			raise RuntimeError("{0} backend(s) failed setup".format(num_errors))
+			# vvv THIS vvv doesn't work yet
+			#~ # Summary of failed checks and recommended remedial actions
+			#~ for code, check_result in failed_checks.items():
+				#~ if self.tell is not None:
+					#~ self.tell(check_result.get_full())
+			# ^^^ THIS ^^^ doesn't work yet
