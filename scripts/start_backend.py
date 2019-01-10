@@ -4,6 +4,7 @@ import logging
 import os.path
 import sys
 
+from mandc.config import BACKEND_OPTION_BDC
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging
 
@@ -14,10 +15,14 @@ if __name__ == "__main__":
 	import argparse
 
 	parser = argparse.ArgumentParser(description="Configure R2DBE backends")
+	parser.add_argument("-b", "--include-bdc", action="store_true", default=False,
+	  help="include BDC in configuration")
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
 	  help="write log messages to FILE in addition to stdout (default is $HOME/log/{0})".format(_default_log_basename))
 	parser.add_argument("-v", "--verbose", action="store_true", default=False,
 	  help="set logging to level DEBUG")
+	parser.add_argument("-y", "--yes-all", action="store_true", default=False,
+	  help="answer yes to all questions (e.g. device config overwrite)")
 	parser.add_argument("conf", metavar="CONFIG", type=str,
 	  help="backend configuration file")
 	args = parser.parse_args()
@@ -29,8 +34,19 @@ if __name__ == "__main__":
 	# Configure UI
 	tm = TerminalMessenger()
 
+	# Should configuration include BDC?
+	ignore_list = [BACKEND_OPTION_BDC]
+	if args.include_bdc:
+		ignore_list.remove(BACKEND_OPTION_BDC)
+
+	# Implement yes-to-all
+	ask_proxy = tm.ask
+	if args.yes_all:
+		ask_proxy = None
+
 	# Parse configuration file
-	station_backend = Station.from_file(args.conf, tell=tm.tell, ask=tm.ask)
+	station = Station.from_file(args.conf, tell=tm.tell, ask=ask_proxy,
+	  ignore_device_classes=ignore_list)
 
 	# Set up
-	station_backend.setup()
+	station.setup()
