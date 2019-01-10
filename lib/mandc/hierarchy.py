@@ -1,4 +1,5 @@
 import logging
+import platform
 import sys
 
 from ConfigParser import RawConfigParser
