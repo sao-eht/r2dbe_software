@@ -11,4 +11,5 @@ from thread import (
 
 from messages import (
   TerminalMessenger,
+  configure_logging,
 )
