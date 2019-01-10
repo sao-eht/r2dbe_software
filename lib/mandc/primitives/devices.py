@@ -92,7 +92,7 @@ class CheckingDevice(object):
 		response = os.system("ping -c 1 " + identifier + " > /dev/null")
 
 		# Check the result
-		result =  CheckResult("{name}: {desc}".format(name=identifier, desc="is available"),
+		result =  CheckResult("   - {name} {desc}".format(name=identifier, desc="should be available"),
 		  response == 0, critical=critical)
 
 		# Feedback to user, if available
@@ -112,9 +112,12 @@ class CheckingDevice(object):
 		self._tell = tell
 		self._ask = ask
 
-	def tell(self, msg):
+	def tell(self, msg, id_me=True, **kwargs):
 		if self._tell is not None:
-			self._tell(msg)
+			me = ""
+			if self.host is not None and id_me:
+				me = "  {me}: ".format(me=self.host)
+			self._tell("{me}{msg}".format(me=me,msg=msg), **kwargs)
 
 	def ask(self, msg, default=True):
 		if self._ask is not None:
@@ -160,7 +163,7 @@ class CheckingDevice(object):
 			  code=code, recommends=recommends)
 
 		# Tell the outcome
-		self.tell(result)
+		self.tell("    - {res}".format(res=result), id_me=False)
 
 		# Log the outcome if possible
 		if hasattr(self, "logger"):
@@ -189,6 +192,8 @@ class CheckingDevice(object):
 		Return a list of CheckResult items, one for each check.
 		"""
 
+		self.tell("Doing pre-config checks")
+
 		self.do_checklist([])
 
 	def post_config_checks(self):
@@ -196,6 +201,8 @@ class CheckingDevice(object):
 
 		Return a list of CheckResult items, one for each check.
 		"""
+
+		self.tell("Doing post-config checks")
 
 		self.do_checklist([])
 
@@ -220,6 +227,8 @@ class CheckingDevice(object):
 
 		Return a list of CheckResult items, one for each check.
 		"""
+
+		self.tell("Configuring device")
 
 		self._dev = cfg
 
