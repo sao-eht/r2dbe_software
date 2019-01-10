@@ -32,11 +32,12 @@ class Backend(CheckingDevice):
 		self.signal_paths = signal_paths
 		self.logger = logging.getLogger("{name}[name={be}]".format(name=".".join((parent_logger.name, 
 		  self.__class__.__name__)), be=self.name))
-		self.logger.info("Instantiated backend with (r2dbe={r2dbe}; mark6={mark6})".format(name=self.name,
-		  r2dbe=self.r2dbe.host, mark6=self.mark6.host))
+		self.logger.info(
+		  "Instantiated backend with (bdc={bdc}; r2dbe={r2dbe}; mark6={mark6})".format(
+		  name=self.name, bdc=self.bdc, r2dbe=self.r2dbe, mark6=self.mark6))
 
 	def __repr__(self):
-		repr_str = "{name}:|%r>>%r>>%r|" % (self.bdc,self.r2dbe,self.mark6)
+		repr_str = "[{name}|%r>>%r>>%r]" % (self.bdc,self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
 	def alc(self, digital_only=True, use_tell=False):
