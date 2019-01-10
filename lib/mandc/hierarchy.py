@@ -39,6 +39,117 @@ class Backend(CheckingDevice):
 		repr_str = "{name}:|%r>>%r>>%r|" % (self.bdc,self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
+	def alc(self, digital_only=True, use_tell=False):
+		from r2dbe import R2DBE_IDEAL_2BIT_THRESHOLD
+		from numpy import log10
+
+		# Check if devices configured
+		if not self.r2dbe.device_is_configured:
+			# Report to stdout if requested
+			if use_tell:
+				self.tell(
+				  "Device {host!r} is not configured, unable to set 2-bit thresholds".format(
+				  host=self.r2dbe), exclaim=True)
+			# Log error and stop
+			self.logger.error(
+			  "Unable to set 2-bit thresholds for {host!r}, device unconfigured".format(
+			  host=self.r2dbe))
+			return
+
+		# Report to stdout if requested
+		if use_tell:
+			do = "(digital only) " if digital_only else ""
+			self.tell("Doing {do}automatic level setting for {be}".format(
+			  be=self, do=do))
+
+		for path_n, path in enumerate(self.signal_paths):
+
+			# Set 2-bit threshold
+			self.r2dbe.set_2bit_threshold(path_n)
+
+			# Get 2-bit threshold
+			th = self.r2dbe.get_2bit_threshold(path_n)
+
+			# Calculate recommended adjustment
+			d_pwr = ((1.0 * th) / R2DBE_IDEAL_2BIT_THRESHOLD)**2
+			d_pwr_dB = 10.0 * log10(d_pwr)
+
+			self.logger.info("Recommended BDC attenuator change to {host!r} IF{n} is {d:+.1f} dB".format(
+			  host=self.r2dbe, n=path_n, d=d_pwr_dB))
+
+			# If change is less than 0.5 dB, or if no analog adjustment requested...
+			if digital_only or abs(d_pwr_dB) < 0.5:
+				# ...report result and move on
+				self.logger.info(
+				  "Set 2-bit threshold for {host!r} IF #{n} to {t}".format(
+				  n=path_n, host=self.r2dbe, t=th))
+
+				# Report to stdout if requested
+				if use_tell:
+					self.r2dbe.tell(
+					  "Set 2-bit threshold for IF{n} to {t}, recommend power change of {d:+.1f} dB".format(
+					  n=path_n, t=th, d=-d_pwr_dB))
+				continue
+
+			# Identify the BDC attenuator and adjust
+			subband = self.get_bdc_band(path_n)
+			pol = self.get_bdc_pol(path_n)
+			self.bdc.adjust_attenuator(d_pwr_dB, pol, subband)
+
+			# Report BDC attenuation
+			att = self.bdc.get_attenuator(pol, subband)
+			self.logger.info(
+			  "Attenuator {p}{s} on {host} set to {v}".format(
+			  p=pol, s=subband, host=self.bdc, v=att))
+
+			# Redo 2-bit threshold
+			self.r2dbe.set_2bit_threshold(path_n)
+
+			# Get 2-bit threshold and report
+			th = self.r2dbe.get_2bit_threshold(path_n)
+			self.logger.info(
+			  "Set 2-bit threshold for {host!r} IF{n} to {t}".format(
+			  n=path_n, host=self.r2dbe, t=th))
+
+			# Report to stdout if requested
+			if use_tell:
+				self.bdc.tell("Attenuator {p}{s} on {b} set to {v}".format(
+				  p=pol, s=subband, b=self.bdc, v=att))
+				self.r2dbe.tell("Set 2-bit threshold for IF{n} to {t}".format(
+				  n=path_n, t=th))
+
+	def get_bdc_band(self, path_n):
+		from bdc import SUBBAND_LOWER as BDC_LOW, SUBBAND_UPPER as BDC_HIGH
+		from primitives import SIDEBAND_LOW as PATH_LOW, SIDEBAND_HIGH as PATH_HIGH
+
+		path = self.signal_paths[path_n]
+		subband = None
+		if path.ifs.bdc_sb.sb == PATH_HIGH:
+			subband = BDC_HIGH
+		elif path.ifs.bdc_sb.sb == PATH_LOW:
+			subband = BDC_LOW
+
+		self.logger.debug("BDC subband for path #{n} is {b}".format(
+		  n=path_n, b=subband))
+
+		return subband
+
+	def get_bdc_pol(self, path_n):
+		from bdc import POL_ZERO as BDC_LCP, POL_ONE as BDC_RCP
+		from primitives import POLARIZATION_LEFT as PATH_LCP, POLARIZATION_RIGHT as PATH_RCP
+
+		path = self.signal_paths[path_n]
+		pol = None
+		if path.ifs.pol.pol == PATH_RCP:
+			pol = BDC_RCP
+		elif path.ifs.pol.pol == PATH_LCP:
+			pol = BDC_LCP
+
+		self.logger.debug("BDC polarization for path #{n} is {x}".format(
+		  n=path_n, x=pol))
+
+		return pol
+
 	def setup_bdc(self, aggr_check_fails=None):
 		if self.bdc is None:
 			self.logger.info("No BDC in configuration for this backend")
