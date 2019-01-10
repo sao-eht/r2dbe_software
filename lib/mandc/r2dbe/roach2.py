@@ -53,12 +53,12 @@ class R2dbeConfig(object):
 		if self.station != other.station:
 			return False
 		ours = self.inputs
-		theirs = self.inputs
+		theirs = other.inputs
 		for o,t in zip(ours, theirs):
 			if o != t:
 				return False
 		ours = self.outputs
-		theirs = self.outputs
+		theirs = other.outputs
 		for o,t in zip(ours, theirs):
 			if o != t:
 				return False

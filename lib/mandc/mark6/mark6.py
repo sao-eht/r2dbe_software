@@ -215,7 +215,7 @@ class Mark6Config(object):
 		if self.station != other.station:
 			return False
 		ours = self.input_streams
-		theirs = self.input_streams
+		theirs = other.input_streams
 		for o,t in zip(ours, theirs):
 			if o != t:
 				return False
