@@ -8,11 +8,11 @@ class TerminalMessenger(object):
 	BOLD = "\033[1m"
 	ENDC = "\033[0m"
 
-	MAXLEN = 94
+	MAXLEN = 80
 
 	@classmethod
 	def okay(cls, text):
-		msg = ("{txt:%ds}[{okay}{bold}OK{endc}]" % cls.MAXLEN).format(
+		msg = ("{txt:%ds}  [{okay}{bold}OK{endc}]" % cls.MAXLEN).format(
 		  txt=text[:cls.MAXLEN],okay=cls.OKAY,bold=cls.BOLD,endc=cls.ENDC)
 		return msg
 
