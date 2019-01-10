@@ -346,7 +346,7 @@ class Station(CheckingDevice):
 			backends[be] = Backend(be, station, bdc=bdc, r2dbe=r2dbe, mark6=mark6,
 			  signal_paths=signal_paths, tell=tell, ask=ask)
 
-		return cls("localhost", station, backends, tell=tell, ask=ask)
+		return cls(platform.node(), station, backends, tell=tell, ask=ask)
 
 	def setup(self):
 		# Initialize queue to keep possible exceptions
