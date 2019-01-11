@@ -2,6 +2,8 @@ from struct import pack, unpack
 from datetime import datetime, timedelta, tzinfo
 from numpy import int32, uint32, array, zeros
 
+from ..utils.timedate import UTC
+
 class VDIFTime(object):
 
 	EPOCH_0_YEAR = 2000
@@ -58,19 +60,6 @@ class VDIFTime(object):
 
 	def __repr__(self):
 		return "{0}@{1}+{2}".format(self.epoch, self.sec, self.frame)
-
-class UTC(tzinfo):
-    """ UTC tzinfo """
-
-    def utcoffset(self, dt):
-        return timedelta(0)
-
-    def tzname(self, dt):
-        return "UTC"
-
-    def dst(self, dt):
-        return timedelta(0)
-
 
 class VDIFFrameHeader(object):
 
