@@ -1,6 +1,7 @@
 import logging
 
 import json
+import os
 from datetime import datetime, timedelta
 from subprocess import Popen, PIPE
 from struct import pack
@@ -346,6 +347,75 @@ class Mark6(CheckingDevice):
 		# quoting should use single quotes.
 		ssh_cmd = 'ssh {user}@{host} "{cmd}"'.format(user=self.user, host=self.host, cmd=cmd)
 		return _system_call(ssh_cmd)
+
+	def copy_to(self, local_file, target_path, create_path=True):
+		# Copy file from local machine (where Python object instance exists) to Mark6
+		if create_path:
+			rc, so, se = self._system_call("mkdir -p {t}".format(t=target_path))
+			if rc != 0:
+				self.logger.error(
+				  "Failed to create target path {t} on {me}, received error {c} with message '{m}'".format(
+				  t=target_path, me=self, c=rc, m=se))
+
+		# Even if target path creation failed, try to continue
+		remote_file = local_file.split(os.sep)[-1]
+		rc, so, se = _system_call("scp {l} {u}@{h}:{t}/{r}".format(l=local_file,
+		  u=self.user, h=self.host, t=target_path, r=remote_file))
+		if rc != 0:
+			self.logger.error("Failed to copy {l} to {u}@{h}:{t}, " \
+			  "received error {c} with message '{m}'".format(l=local_file,
+			  u=self.user, h=self.host, t=target_path, c=rc, m=se))
+
+		return rc == 0
+
+	def vex2xml(self, path, filename):
+		v2x = "{p}/{e}".format(p=EXEC_VEX2XML_PATH, e=EXEC_VEX2XML)
+
+		# Do call
+		rc, so, se = self._system_call("cd {rp}; {v2x} -f {rf}.vex -s {s}".format(
+		  rp=path, v2x=v2x, rf=filename, s=self.device_config.station))
+		if rc != 0:
+			self.logger.error("Failed to execute vex2xml.py for file {rf} in {rp} on {u}@{h}, " \
+			  "received error {c} with message '{m}'".format(rf=filename,
+			  rp=path, u=self.user, h=self.host, c=rc, m=se))
+
+		# Check XML created
+		rc, so, se = self._system_call("ls {rp}/{rf}.xml".format(
+		  rp=path, v2x=v2x, rf=filename, s=self.device_config.station))
+		if rc != 0:
+			self.logger.error("Check for existence of {rp}/{rf}.xml failed, " \
+			  "received error {c} with message '{m}'".format(rf=filename,
+			  rp=path, u=self.user, h=self.host, c=rc, m=se))
+
+		return rc == 0
+
+	def m6cc(self, path, filename):
+		m6cc = "screen -Ldm {p}/{e}".format(p=EXEC_M6CC_PATH,e=EXEC_M6CC)
+
+		# Do call
+		rc, so, se = self._system_call("cd {rp}; {m6cc} -f {rf}.xml".format(
+		  rp=path, m6cc=m6cc, rf=filename), bg=True)
+		if rc != 0:
+			self.logger.error("Failed to execute M6_CC for file {rf} in {rp} on {u}@{h}, " \
+			  "received error {c} with message '{m}'".format(rf=filename,
+			  rp=path, u=self.user, h=self.host, c=rc, m=se))
+			return False
+
+		if not self.check_m6cc_running():
+			self.logger.warning("{e} does not seem to be running, check {rp}/screenlog.*".format(
+			  e=EXEC_M6CC, rp=path))
+			return False
+
+		return True
+
+	def check_m6cc_running(self):
+		# Check if process still running
+		rc, so, se = self._system_call("pgrep {e}".format(e=EXEC_M6CC))
+		if rc in [0,1]:
+			return rc == 0
+
+		self.logger.error("Failed to check if {e} still running, " \
+		  "received error {c} with message '{m}'".format(c=rc, m=se, e=EXEC_M6CC))
 
 	def datetime(self):
 		code_str = "" \

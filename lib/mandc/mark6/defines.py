@@ -36,3 +36,9 @@ LSSCSI_DISKS = 32
 NTPQ_MAX_OFFSET = 0.100
 VV_MAX_OFFSET = 0.01
 GROUP_REF = "1234"
+
+# Executables
+EXEC_M6CC = "dummy.sh"
+EXEC_M6CC_PATH = "/home/oper/bin"
+EXEC_VEX2XML = "vex2xml.py"
+EXEC_VEX2XML_PATH = "/home/oper/bin"
