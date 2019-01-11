@@ -45,6 +45,44 @@ class TerminalMessenger(object):
 			if response.lower() == "n":
 				return False
 
+	@classmethod
+	def select(cls, text_pre_opt, opt_dict, default_key=None,
+	  text_post_opt="Please enter your selection [%s]: "):
+
+		# Make text for option list
+		text_opt = "\n".join([
+		  "  [{key}] {val}".format(key=k, val=v) for k,v in opt_dict.items()
+		])
+
+		# Compile option list
+		text_opt_list = "[]"
+		if len(opt_dict.keys()) < 6:
+			text_opt_list = ",".join([str(k) for k in opt_dict.keys()])
+		else:
+			text_opt_list = "{o1}, ..., {oN}".format(o1=opt_dict.keys()[0],
+			  oN = opt_dict.keys()[-1])
+
+		# Insert option list in post-option text
+		text_post_opt = text_post_opt % text_opt_list
+
+		# Compile full message and print
+		msg = "{pre}\n{opt}".format(pre=text_pre_opt, opt=text_opt)
+		print msg
+
+		# Ask selection and get reponse
+		while True:
+			response = raw_input(text_post_opt)
+
+			# Check default
+			if default_key is not None:
+				if len(response) == 0:
+					return default_key
+
+			if response in [str(k) for k in opt_dict.keys()]:
+				return response
+			else:
+				print "Invalid selection"
+
 def configure_logging(logfilename=None, verbose=None, stdout_logger=True):
 	# Set up root logger
 	logger = logging.getLogger()
