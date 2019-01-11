@@ -14,7 +14,7 @@ _default_log = os.path.sep.join([os.path.expanduser("~"), "log",_default_log_bas
 if __name__ == "__main__":
 	import argparse
 
-	parser = argparse.ArgumentParser(description="Configure R2DBE backends")
+	parser = argparse.ArgumentParser(description="Configure backend devices")
 	parser.add_argument("-b", "--include-bdc", action="store_true", default=False,
 	  help="include BDC in configuration")
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
