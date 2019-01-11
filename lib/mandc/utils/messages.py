@@ -79,7 +79,9 @@ class TerminalMessenger(object):
 					return default_key
 
 			if response in [str(k) for k in opt_dict.keys()]:
-				return response
+				keys = opt_dict.keys()
+				idx = [str(k) for k in keys].index(response)
+				return keys[idx]
 			else:
 				print "Invalid selection"
 
