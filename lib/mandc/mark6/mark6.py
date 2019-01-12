@@ -394,7 +394,7 @@ class Mark6(CheckingDevice):
 
 		# Do call
 		rc, so, se = self._system_call("cd {rp}; {m6cc} -f {rf}.xml".format(
-		  rp=path, m6cc=m6cc, rf=filename), bg=True)
+		  rp=path, m6cc=m6cc, rf=filename))
 		if rc != 0:
 			self.logger.error("Failed to execute M6_CC for file {rf} in {rp} on {u}@{h}, " \
 			  "received error {c} with message '{m}'".format(rf=filename,
