@@ -397,7 +397,9 @@ class Station(CheckingDevice):
 				num_errors += 1
 				name, exc = exc_queue.get_nowait()
 				exc_str = format_exception_only(*exc[:2])
-				self.logger.critical("An exception occurred during setup of backend '{0}'".format(name))
+				self.logger.critical(
+				  "An exception occurred during setup of backend '{be}', traceback follows:\n{tb}".format(
+				  be=name, tb="".join(exc_lines)))
 
 			# If any errors encountered, raise exception
 			if num_errors > 0:
