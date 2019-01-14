@@ -2,6 +2,7 @@ import logging
 import sys
 
 class TerminalMessenger(object):
+	ATTN = "\033[34m"
 	OKAY = "\033[92m"
 	WARN = "\033[93m"
 	FAIL = "\033[91m"
@@ -36,8 +37,11 @@ class TerminalMessenger(object):
 		print text
 
 	@classmethod
-	def ask(cls, text):
+	def ask(cls, text, exclaim=False):
 		msg = "{txt} (y/n) ".format(txt=text)
+		if exclaim:
+			msg = "{blue}{bold}{txt}{endc}".format(
+			  blue=cls.ATTN,bold=cls.BOLD,txt=msg,endc=cls.ENDC)
 		while True:
 			response = raw_input(msg)
 			if response.lower() == "y":

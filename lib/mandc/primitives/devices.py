@@ -119,9 +119,9 @@ class CheckingDevice(object):
 				me = "  {me}: ".format(me=self.host)
 			self._tell("{me}{msg}".format(me=me,msg=msg), **kwargs)
 
-	def ask(self, msg, default=True):
+	def ask(self, msg, default=True, **kwargs):
 		if self._ask is not None:
-			return self._ask(msg)
+			return self._ask(msg, **kwargs)
 
 		# If not ask method registered, return the default
 		return default
