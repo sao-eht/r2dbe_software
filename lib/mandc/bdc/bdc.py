@@ -341,6 +341,22 @@ class BDC(CheckingDevice):
 
 		return tstr
 
+	def get_lo_freq(self, band=None):
+		args = []
+		if band is not None:
+			args = [band]
+		nstr = self._query(CMD_FREQUENCY,args=args)
+
+		assert len(nstr) > 0
+
+		return int(nstr)
+
+	@property
+	def is_dual_band(self):
+		f0 = self.get_lo_freq(band=BAND_4TO8)
+		f1 = self.get_lo_freq(band=BAND_5TO9)
+		return f0 != f1
+
 	@property
 	def connection(self):
 		return self._connection
