@@ -5,7 +5,7 @@ import logging
 import os.path
 import sys
 
-from mandc.config import BACKEND_OPTION_BDC, BACKEND_OPTION_MARK6
+from mandc.conf import BACKEND_OPTION_BDC, BACKEND_OPTION_MARK6
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging
 

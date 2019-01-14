@@ -7,7 +7,7 @@ from threading import Thread
 from traceback import format_exception, format_exception_only
 from Queue import Queue
 
-from config import StationConfigParser, ValidationError, ParsingError, \
+from conf import StationConfigParser, ValidationError, ParsingError, \
   BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, BACKEND_OPTION_MARK6
 from mark6 import Mark6
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup, CheckingDevice

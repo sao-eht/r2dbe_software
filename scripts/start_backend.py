@@ -4,7 +4,7 @@ import logging
 import os.path
 import sys
 
-from mandc.config import BACKEND_OPTION_BDC
+from mandc.conf import BACKEND_OPTION_BDC
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging
 

@@ -6,7 +6,7 @@ import sys
 
 from datetime import datetime, timedelta
 
-from mandc.config import BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, get_vex_list
+from mandc.conf import BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, get_vex_list
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging, UTC
 
