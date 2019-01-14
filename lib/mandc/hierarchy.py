@@ -295,6 +295,7 @@ class Station(CheckingDevice):
 		except ConfigError as ce:
 			module_logger.error("{cls} raised {err}: {msg}".format(cls=scp.__class__.__name__,
 			  err=ce.__class__.__name__, msg=str(ce)))
+			raise ce
 
 		# Validate the configuration
 		try:
