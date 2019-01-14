@@ -40,18 +40,26 @@ if __name__ == "__main__":
 	  ignore_device_classes=ignore_list)
 
 	# Get triggered schedules
-	vexes = get_vex_list()
-	if len(vexes) < 1:
+	all_vexes = get_vex_list()
+	if len(all_vexes) < 1:
 		tm.tell("No VEX files found in trigger area, exiting", exclaim=True)
 		sys.exit(0)
+	tm.tell("Found {0} VEX files in trigger area".format(len(all_vexes)))
 
 	# Prune schedules that have end-times earlier than now
-	now = datetime.utcnow().replace(tzinfo=UTC()) - timedelta(days=365)
-	for v in vexes:
+	now = datetime.utcnow().replace(tzinfo=UTC())
+	vexes = []
+	for v in all_vexes:
 		if v.stop < now:
 			tm.tell("Found schedule {v.name} for which end time has passed, skipping".format(
 			  v=v))
-			vexes.remove(v)
+		else:
+			vexes.append(v)
+	# If no schedules that late enough end time, report and exit
+	if len(vexes) < 1:
+		tm.tell("Found no schedules that end in the future, exiting", exclaim=True)
+		sys.exit(0)
+
 	# Sort remainers according to start time
 	vexes = sorted(vexes)
 	# Display list and get selection
