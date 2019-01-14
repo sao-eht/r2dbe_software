@@ -7,6 +7,8 @@ from threading import Thread
 from traceback import format_exception, format_exception_only
 from Queue import Queue
 
+from config import ConfigError
+
 from conf import StationConfigParser, ValidationError, ParsingError, \
   BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, BACKEND_OPTION_MARK6
 from mark6 import Mark6
@@ -290,6 +292,9 @@ class Station(CheckingDevice):
 			module_logger.error("{cls} raised {err} with {count} errors: {msg}".format(cls=scp.__class__.__name__,
 			  err=pe.__class__.__name__, msg=str(pe), count=len(pe.errors)))
 			raise pe
+		except ConfigError as ce:
+			module_logger.error("{cls} raised {err}: {msg}".format(cls=scp.__class__.__name__,
+			  err=ce.__class__.__name__, msg=str(ce)))
 
 		# Validate the configuration
 		try:

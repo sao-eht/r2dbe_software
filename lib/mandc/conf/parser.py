@@ -1,6 +1,10 @@
 import logging
 
 from ConfigParser import Error, ParsingError, RawConfigParser
+from StringIO import StringIO
+
+# vlbicontrol's config
+from config import Config, ConfigError
 
 from defines import *
 from ..primitives import Polarization, Sideband, ModSubGroup
@@ -37,8 +41,9 @@ class ValidationError(Error):
 
 class StationConfigParser(RawConfigParser, object):
 
-	def __init__(self, filename=None, parent_logger=module_logger):
+	def __init__(self, filename=None, old_format=False, parent_logger=module_logger):
 		super(StationConfigParser, self).__init__()
+		self._old_format = old_format
 
 		self.logger = logging.getLogger("{name}[fname]".format(name=".".join((parent_logger.name,
 		  self.__class__.__name__)), fname=filename))
@@ -51,9 +56,21 @@ class StationConfigParser(RawConfigParser, object):
 		self.filename = filename
 
 		try:
-			return super(StationConfigParser, self).read(filename)
+			# If old format, use RawConfigParser's read from file (by name)
+			if self._old_format:
+				return super(StationConfigParser, self).read(filename)
+			# If new format, use vlbicontrol's config parser, translate to old
+			# format in StringIO, then use RawConfigParser's readfp
+			vlbictrl_conf = Config(filename)
+			old_conf_str = vlbictrl_conf.make_old_version()
+			sio = StringIO(old_conf_str)
+			super(StationConfigParser, self).readfp(sio)
+			# Caller might expect list of files read, so return one
+			return [filename]
 		except ParsingError as pe:
 			raise pe
+		except ConfigError as ce:
+			raise ce
 
 	def validate(self, ignore_device_classes=[]):
 
