@@ -154,7 +154,7 @@ class Backend(CheckingDevice):
 	def setup_bdc(self, aggr_check_fails=None):
 		if self.bdc is None:
 			self.logger.info("No BDC in configuration for this backend")
-			return
+			return True
 
 		# BDC: pre-config checks, then setup, then post-config checks
 		self.bdc.pre_config_checks()
@@ -167,8 +167,7 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} pre-config critical errors for {bdc}, aborting setup for backend {be}".format(
 			  ce=ce_count, bdc=self.bdc, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} pre-config critical errors for {bdc}, aborting setup for backend {be}".format(
-			  ce=ce_count, bdc=self.bdc, be=self))
+			return False
 		self.bdc.setup(BAND_5TO9)
 		self.bdc.post_config_checks()
 		ce_count = 0
@@ -180,13 +179,14 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
 			  ce=ce_count, bdc=self.bdc, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} post-config critical errors for {bdc}, aborting setup for backend {be}".format(
-			  ce=ce_count, bdc=self.bdc, be=self))
+			return False
+
+		return True
 
 	def setup_r2dbe(self, aggr_check_fails=None):
 		if self.r2dbe is None:
 			self.logger.info("No R2DBE in configuration for this backend")
-			return
+			return True
 
 		# R2DBE: pre-config checks, then setup, then post-config checks
 		self.r2dbe.pre_config_checks()
@@ -199,8 +199,7 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} pre-config critical errors for {r2}, aborting setup for backend {be}".format(
 			  ce=ce_count, r2=self.r2dbe, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} pre-config critical errors for {r2}, aborting setup for backend {be}".format(
-			  ce=ce_count, r2=self.r2dbe, be=self))
+			return False
 		self.r2dbe.setup(self.station, [sp.ifs for sp in self.signal_paths],
 		  [sp.ethrt for sp in self.signal_paths])
 		self.r2dbe.post_config_checks()
@@ -213,13 +212,14 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
 			  ce=ce_count, r2=self.r2dbe, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} post-config critical errors for {r2}, aborting setup for backend {be}".format(
-			  ce=ce_count, r2=self.r2dbe, be=self))
+			return False
+
+		return True
 
 	def setup_mark6(self, aggr_check_fails=None):
 		if self.mark6 is None:
 			self.logger.info("No Mark6 in configuration for this backend")
-			return
+			return True
 
 		# Mark6: pre-config checks, then setup, then post-config checks
 		self.mark6.pre_config_checks()
@@ -232,8 +232,7 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
-			  ce=ce_count, m6=self.mark6.host, be=self))
+			return False
 		self.mark6.setup(self.station, [sp.ethrt for sp in self.signal_paths],
 		  [sp.modsg for sp in self.signal_paths])
 		self.mark6.post_config_checks()
@@ -246,15 +245,21 @@ class Backend(CheckingDevice):
 		if ce_count > 0:
 			self.tell("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self), exclaim=True)
-			raise RuntimeError("Encountered {ce} post-config critical errors for {m6}, aborting setup for backend {be}".format(
-			  ce=ce_count, m6=self.mark6.host, be=self))
+			return False
+
+		return True
 
 	def setup(self, aggr_check_fails=None):
 		self.tell("Configuring devices for {be}:".format(be=self))
 
-		self.setup_bdc(aggr_check_fails=aggr_check_fails)
-		self.setup_r2dbe(aggr_check_fails=aggr_check_fails)
-		self.setup_mark6(aggr_check_fails=aggr_check_fails)
+		if not self.setup_bdc(aggr_check_fails=aggr_check_fails):
+			return False
+		if not self.setup_r2dbe(aggr_check_fails=aggr_check_fails):
+			return False
+		if not self.setup_mark6(aggr_check_fails=aggr_check_fails):
+			return False
+
+		return True
 
 class Station(CheckingDevice):
 
