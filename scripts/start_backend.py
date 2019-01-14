@@ -15,8 +15,8 @@ if __name__ == "__main__":
 	import argparse
 
 	parser = argparse.ArgumentParser(description="Configure backend devices")
-	parser.add_argument("-b", "--include-bdc", action="store_true", default=False,
-	  help="include BDC in configuration")
+	parser.add_argument("--exclude-bdc", action="store_true", default=False,
+	  help="exclude BDC from configuration")
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
 	  help="write log messages to FILE in addition to stdout (default is $HOME/log/{0})".format(_default_log_basename))
 	parser.add_argument("-v", "--verbose", action="store_true", default=False,
@@ -35,9 +35,9 @@ if __name__ == "__main__":
 	tm = TerminalMessenger()
 
 	# Should configuration include BDC?
-	ignore_list = [BACKEND_OPTION_BDC]
-	if args.include_bdc:
-		ignore_list.remove(BACKEND_OPTION_BDC)
+	ignore_list = []
+	if args.exclude_bdc:
+		ignore_list.append(BACKEND_OPTION_BDC)
 
 	# Implement yes-to-all
 	ask_proxy = tm.ask
