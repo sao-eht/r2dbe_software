@@ -1029,16 +1029,27 @@ class R2dbe(Roach2):
 
 		# Check if the device config matches the object
 		if self.device_matches_object():
-			self.logger.info("Device configuration {name} matches specification".format(
+			self.logger.info("Device configuration {name} matches object configuration".format(
 			  name=self.host))
-			if not self.ask("Device configuration for {name} matches specification. Overwrite?".format(
-				  name=self.host)):
+			# If programmed with correct configuration, ask if overwrite
+			if not self.ask("R2DBE {name} is already running configuration from file, re-program? " \
+			  "(Answering 'y' means re-synchronising to GPS PPS)".format(name=self.host),
+			  exclaim=True):
 				self.logger.info("Device configuration for {name} will be left unaltered".format(
-					  name=self.host))
-				return
-			else:
-				self.logger.info("Device configuration for {name} will be overwritten".format(
 				  name=self.host))
+				return
+		elif self.device_is_configured:
+			self.logger.info("Device configuration {name} does not match object configuration".format(
+			  name=self.host))
+			# If programmed with different configuration, still ask if overwrite
+			if not self.ask("R2DBE {name} is running different configuration than in file, re-program? " \
+			  "(Answering 'y' means re-synchronising to GPS PPS)".format(name=self.host),
+			  exclaim=True):
+				self.logger.info("Device configuration for {name} will be left unaltered".format(
+				  name=self.host))
+				return
+		self.logger.info("R2DBE {name} will be re-programmed".format(
+		  name=self.host))
 
 		# If device config does not match object, or ask response said to overwrite
 		self.config_device(rc)

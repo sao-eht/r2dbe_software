@@ -252,7 +252,6 @@ class Backend(CheckingDevice):
 		return True
 
 	def setup(self, aggr_check_fails=None):
-		self.tell("Configuring devices for {be}:".format(be=self))
 
 		if not self.setup_bdc(aggr_check_fails=aggr_check_fails):
 			return False
@@ -283,7 +282,7 @@ class Station(CheckingDevice):
 
 		# Read the specified file (includes parsing checks)
 		if tell is not None:
-			tell("Processing configuration {fn}".format(fn=filename))
+			tell("############### Processing configuration {fn} ###############\n".format(fn=filename))
 		try:
 			if len(scp.read(filename)) < 1:
 				module_logger.error("Unable to read station configuration file '{0}'".format(filename))
@@ -314,7 +313,8 @@ class Station(CheckingDevice):
 		for be in backend_list:
 
 			if tell is not None:
-				tell("Check all devices referenced in {be} available:".format(be=be))
+				tell("\n----------------------------------------------\n" \
+				  "Check all devices referenced in {be} available:".format(be=be))
 			avail = True
 
 			if BACKEND_OPTION_BDC not in ignore_device_classes:
@@ -341,7 +341,7 @@ class Station(CheckingDevice):
 				avail_backends.append(be)
 			else:
 				if tell is not None:
-					tell("One or more devices unavailable for {be}, skipping".format(be=be), exclaim=True)
+					tell("One or more devices unavailable for {be}, skipping this signal path".format(be=be), exclaim=True)
 
 		# There needs to be at least one available backend
 		if len(avail_backends) < 1:
@@ -414,8 +414,12 @@ class Station(CheckingDevice):
 		# If user-input required, then backends need setting up in series
 		else:
 			failed_checks = {}
+			self.tell("\n############### Configuring backend devices ###############", id_me=False)
 			for be in zip(*self.backends.items())[1]:
 				try:
+					self.tell("\n----------------------------\n" \
+					  "Configuring devices for {be}:".format(be=be), id_me=False)
+
 					# Do pre-config checks
 					be.pre_config_checks()
 

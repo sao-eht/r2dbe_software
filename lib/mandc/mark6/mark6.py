@@ -730,8 +730,8 @@ class Mark6(CheckingDevice):
 		if self.device_matches_object():
 			self.logger.info("Device configuration {name} matches specification".format(
 			  name=self.host))
-			if not self.ask("Device configuration for {name} matches specification. Overwrite?".format(
-				  name=self.host)):
+			if not self.ask("Mark6 {name} configuration matches that from file, re-configure?".format(
+				  name=self.host), exclaim=True):
 				self.logger.info("Device configuration for {name} will be left unaltered".format(
 					  name=self.host))
 				return
