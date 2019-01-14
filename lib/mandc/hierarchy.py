@@ -46,6 +46,13 @@ class Backend(CheckingDevice):
 		from r2dbe import R2DBE_IDEAL_2BIT_THRESHOLD
 		from numpy import log10
 
+		# Report to stdout if requested
+		if use_tell:
+			do = "(digital only) " if digital_only else ""
+			self.tell("\n------------------------------------\n" \
+			  "Doing {do}automatic level setting for {be}".format(
+			  be=self, do=do))
+
 		# Check if devices configured
 		if not self.r2dbe.device_is_configured:
 			# Report to stdout if requested
@@ -59,11 +66,16 @@ class Backend(CheckingDevice):
 			  host=self.r2dbe))
 			return
 
-		# Report to stdout if requested
-		if use_tell:
-			do = "(digital only) " if digital_only else ""
-			self.tell("Doing {do}automatic level setting for {be}".format(
-			  be=self, do=do))
+		# Check if valid BDC type
+		if self.bdc is None:
+			# Report to stdout that will do digital only, if requested
+			if use_tell:
+				self.tell("BDC is being ignored, will only set 2-bit threshold (no attenuator adjustments)",
+				  exclaim=True)
+			# Log as warning
+			self.logger.warning("BDC is being ignored, not adjusting attenuators")
+			# Force digital_only
+			digital_only = True
 
 		for path_n, path in enumerate(self.signal_paths):
 
@@ -322,6 +334,14 @@ class Station(CheckingDevice):
 				if not BDC.is_available(bdc_id, tell=tell):
 					module_logger.error("Backend device {name} is not available.".format(name=bdc_id))
 					avail = False
+				# Only dual-band BDCs supported for now
+				_bdc = BDC(bdc_id)
+				if not _bdc.is_dual_band:
+					tell("BDC {name} is single-band (only dual-band units supported), ignoring this device".format(
+					  name=_bdc.host), exclaim=True)
+					module_logger.warning("BDC {name} is not-dual, will not be configured".format(
+					  name=_bdc.host))
+					ignore_device_classes.append(BACKEND_OPTION_BDC)
 
 			if BACKEND_OPTION_R2DBE not in ignore_device_classes:
 				r2dbe_id = scp.backend_r2dbe(be)
