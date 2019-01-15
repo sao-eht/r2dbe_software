@@ -641,7 +641,11 @@ class Station(CheckingDevice):
 					be.pre_config_checks()
 
 					# Do setup
-					be.setup(aggr_check_fails=failed_checks)
+					if not be.setup(aggr_check_fails=failed_checks):
+						continue
+
+					self.tell("\nDoing post-config checks for {be}:".format(be=be),
+					  id_me=False)
 
 					# Do post-config checks
 					be.post_config_checks()
