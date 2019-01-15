@@ -192,7 +192,8 @@ class CheckingDevice(object):
 		Return a list of CheckResult items, one for each check.
 		"""
 
-		self.tell("Doing pre-config checks")
+		if self.host is not None:
+			self.tell("Doing pre-config checks")
 
 		self.do_checklist([])
 
@@ -202,7 +203,8 @@ class CheckingDevice(object):
 		Return a list of CheckResult items, one for each check.
 		"""
 
-		self.tell("Doing post-config checks")
+		if self.host is not None:
+			self.tell("Doing post-config checks")
 
 		self.do_checklist([])
 
@@ -228,7 +230,8 @@ class CheckingDevice(object):
 		Return a list of CheckResult items, one for each check.
 		"""
 
-		self.tell("Configuring device")
+		if self.host is not None:
+			self.tell("Configuring device")
 
 		self._dev = cfg
 
