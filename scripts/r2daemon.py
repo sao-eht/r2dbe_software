@@ -145,7 +145,7 @@ _default_mon_list = [
   MonitorDefinition(R2dbeMonitor, [R2DBE_GROUP_SNAP], period=2.0),
   MonitorDefinition(R2dbeMonitor, [R2DBE_GROUP_VDIF], period=60.0),
   MonitorDefinition(R2dbeSyncMonitor, [R2DBE_GROUP_TIME], period=0.9,
-    usec_into=150000, usec_tol=50000, ignore_late=True)
+    usec_into=50000, usec_tol=900000, ignore_late=False)
 ]
 
 if __name__ == "__main__":

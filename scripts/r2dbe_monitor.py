@@ -108,7 +108,7 @@ class HistogramPanel(Panel):
 		# Check if None returned
 		if any([p is None for p in [proxy_b, proxy_h]]):
 			# Do not update, maybe log
-			self.logger.warn("Missing data for certain attributes, not updating panel")
+			#self.logger.warn("Missing data for certain attributes, not updating panel")
 			return
 
 		# Data received, carry on
