@@ -464,6 +464,19 @@ class Mark6(CheckingDevice):
 			t2 = datetime.strptime(rv["t_d_t"][2], "%Y-%m-%d %H:%M:%S.%f")
 			return vdif, t1, t2
 
+	def data_receive_check(self, iface, port):
+		# Try to receive data
+		v = self.capture_vdif(iface, port)
+
+		# If result is None, fail
+		if v is None:
+			return False
+
+		# Possibly some checks to determine if really VDIF
+		# ...
+
+		return True
+
 	def vv_proxy(self, iface, port):
 
 		# Do a timed capture

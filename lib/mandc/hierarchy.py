@@ -42,6 +42,124 @@ class Backend(CheckingDevice):
 		repr_str = "[{name}|%r>>%r>>%r]" % (self.bdc,self.r2dbe,self.mark6)
 		return repr_str.format(name=self.name)
 
+	def check_link_r2dbe_mark6(self, path_n):
+
+		# Cannot do check if no R2DBE in configuration
+		if self.r2dbe is None:
+			self.logger.error("Cannot check R2DBE-Mark6 link if R2DBE not part of configuration")
+			return False
+
+		# Cannot do check if no Mark6 in configuration
+		if self.mark6 is None:
+			self.logger.error("Cannot check R2DBE-Mark6 link if Mark6 not part of configuration")
+			return False
+
+		path = self.signal_paths[path_n]
+		self.logger.debug("Check link R2DBE({me.r2dbe})<-->Mark6({me.mark6}) on path #{n}, {pth}".format(
+		  me=self,n=path_n,pth=path))
+
+		# Get receive socket on Mark6
+		mark6 = self.mark6
+		eth = mark6.object_config.input_streams[path_n].iface_id
+		port = mark6.object_config.input_streams[path_n].portno
+
+		# Return Mark6's check result
+		return mark6.data_receive_check(eth, port)
+
+	def check_link_bdc_r2dbe(self, path_n, wait=1.01, delta_attn_dB_abs=1.5):
+		from numpy import log10
+		from time import sleep
+		from bdc import ATTENUATOR_MIN, ATTENUATOR_MAX
+
+		# Cannot do check if no BDC in configuration
+		if self.bdc is None:
+			self.logger.error("Cannot check BDC-R2DBE link if BDC not part of configuration")
+			return False
+
+		# Cannot do check if no R2DBE in configuration
+		if self.r2dbe is None:
+			self.logger.error("Cannot check BDC-R2DBE link if R2DBE not part of configuration")
+			return False
+
+		path = self.signal_paths[path_n]
+		self.logger.debug("Check link BDC({me.bdc})<-->R2DBE({me.r2dbe}) on path #{n}, {pth}".format(
+		  me=self,n=path_n,pth=path))
+
+		# Map signal path to BDC attenuators
+		subband = self.get_bdc_band(path_n)
+		pol = self.get_bdc_pol(path_n)
+
+		# Read attenuator value
+		attn_val_1_dB = self.bdc.get_attenuator(pol, subband)
+
+		# Determine if attenuator should increase or decrease
+		delta_attn_dB = delta_attn_dB_abs
+		if attn_val_1_dB + delta_attn_dB > ATTENUATOR_MAX:
+			delta_attn_dB = -delta_attn_dB_abs
+
+		self.logger.debug(
+		  "{me.bdc} attenuator starting value is {val0}, change will be {delta}".format(
+		  me=self, val0=attn_val_1_dB, delta=delta_attn_dB))
+
+		# Get reference time
+		m0v, s0v, _ = self.r2dbe._dump_power_buffer(path_n)
+		t0 = (m0v / 1000. + s0v).max()
+
+		self.logger.debug("{me.bdc} reference time is {ref}".format(
+		  me=self, ref=t0))
+
+		# Wait for power to stabilise if needed
+		sleep(wait)
+
+		# Read power level
+		m1v, s1v, p1v = self.r2dbe._dump_power_buffer(path_n)
+		t1v = m1v / 1000. + s1v
+		t1 = t1v.max()
+		p1 = p1v[t1v > t0].mean()
+		a1 = 10**(attn_val_1_dB/10.)
+
+		self.logger.debug("{me.r2dbe} IF{n} power at time t1={t1} is {p1}".format(
+		  me=self, n=path_n, t1=t1, p1=p1))
+
+		# Adjust attenuator
+		self.bdc.adjust_attenuator(delta_attn_dB, pol, subband)
+		attn_val_2_dB = self.bdc.get_attenuator(pol, subband)
+
+		# Wait for power to stabilise if needed
+		sleep(wait)
+
+		# Read power level
+		m2v, s2v, p2v = self.r2dbe._dump_power_buffer(path_n)
+		t2v = m2v / 1000. + s2v
+		t2 = t2v.max()
+		p2 = p2v[t2v > t1].mean()
+		a2 = 10**(attn_val_2_dB/10.)
+
+		self.logger.debug("{me.r2dbe} IF{n} power at time t2={t2} is {p2}".format(
+		  me=self, n=path_n, t2=t2, p2=p2))
+
+		# Reset attenuator to initial value
+		self.bdc.set_attenuator(attn_val_1_dB, pol, subband)
+
+		# Calculate delta attenuator and power
+		delta_pwr = (p2 - p1)/p1
+		delta_attn = (a2 - a1)/a1
+
+		self.logger.debug(
+		  "Attenuator change of {a:.1f}% caused power change of {p:.1f}%".format(
+		  a=delta_attn*100, p=delta_pwr*100))
+
+		# Change in power should be at least half the change in attenuator
+		if abs(delta_pwr) < 0.5*abs(delta_attn):
+			self.logger.warning(
+			  "Change in power in {me.r2dbe} IF{n} is only {dp:.1f}%, " \
+			  "while change in {me.bdc} {pol}{sb} is {da:.1f}%".format(
+			  me=self, n=path_n, dp=delta_pwr*100, pol=pol, sb=subband,
+			  da=delta_attn*100))
+			return False
+
+		return True
+
 	def alc(self, digital_only=True, use_tell=False):
 		from r2dbe import R2DBE_IDEAL_2BIT_THRESHOLD
 		from numpy import log10
