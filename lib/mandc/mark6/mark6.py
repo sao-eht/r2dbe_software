@@ -882,20 +882,6 @@ class Mark6(CheckingDevice):
 		eth1 = self.object_config.input_streams[1].iface_id
 		port1 = self.object_config.input_streams[1].portno
 		checklist = [
-		  ("packets should be received on interace {iface}".format(iface=eth0),
-		    lambda: self.capture_vdif(eth0, port0), None, None, True,
-		    self.CHECK_CODE_HIGH + 61),
-		  ("packets should be received on interace {iface}".format(iface=eth1),
-		    lambda: self.capture_vdif(eth1, port1), None, None, True,
-		    self.CHECK_CODE_HIGH + 61),
-		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
-		    iface=eth0, off=VV_MAX_OFFSET), lambda: self.vv_check(eth0, port0), None,
-		    None, False,
-		    self.CHECK_CODE_HIGH + 62),
-		  ("timestamp on interface {iface} should be accurate to within {off} seconds".format(
-		    iface=eth1, off=VV_MAX_OFFSET), lambda: self.vv_check(eth1, port1), None,
-		    None, False,
-		    self.CHECK_CODE_HIGH + 62)
 		]
 
 		# Run this class's checklist

@@ -1,3 +1,5 @@
+from defines import *
+
 from mark6 import (
   ModuleStatus,
   InputStream,

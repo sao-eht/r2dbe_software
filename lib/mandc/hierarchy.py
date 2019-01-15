@@ -392,6 +392,85 @@ class Backend(CheckingDevice):
 
 		return True
 
+	def post_config_checks(self):
+		from mark6 import VV_MAX_OFFSET
+
+		# Do super's pre-config checks first
+		super(Backend, self).post_config_checks()
+
+		if self.bdc is not None and self.r2dbe is not None:
+			# Link check BDC to R2DBE
+			self.tell("  Check link between {me.bdc} and {me.r2dbe}".format(
+			  me=self))
+			# Get names of things
+			subbands = [self.get_bdc_band(n) for n in range(2)]
+			pols = [self.get_bdc_pol(n) for n in range(2)]
+			# Compile the checklist
+			checklist = [
+			  ("attenuator {bdc}.{p}{s} change should reflect in {r2dbe}.IF{n}".format(
+				bdc=self.bdc, p=pols[0], s=subbands[0], r2dbe=self.r2dbe, n=0),
+				lambda: self.check_link_bdc_r2dbe(0), None, None, True,
+				self.CHECK_CODE_HIGH + 61, []),
+			  ("attenuator {bdc}.{p}{s} change should reflect in {r2dbe}.IF{n}".format(
+				bdc=self.bdc, p=pols[1], s=subbands[1], r2dbe=self.r2dbe, n=1),
+				lambda: self.check_link_bdc_r2dbe(1), None, None, True,
+				self.CHECK_CODE_HIGH + 61, []),
+			]
+			# Run first part of checklist
+			self.do_checklist(checklist)
+
+			# Drain checks
+			for cr in self.check_results:
+				pass
+
+		if self.r2dbe is not None and self.mark6 is not None:
+			# Link check R2DBE to Mark6
+			self.tell("  Check link between {me.r2dbe} and {me.mark6.host}".format(
+			  me=self))
+			# Get names of things
+			ifaces = [self.mark6.object_config.input_streams[n].iface_id for n in range(2)]
+			ports = [self.mark6.object_config.input_streams[n].portno for n in range(2)]
+			# Compile the checklist
+			checklist = [
+			  ("VDIF from {r2dbe}.10GbE{n} should be received in {mark6}.{e}:{p}".format(
+				r2dbe=self.r2dbe, n=0, mark6=self.mark6.host, e=ifaces[0], p=ports[0]),
+				lambda: self.check_link_r2dbe_mark6(0), None, None, True,
+				self.CHECK_CODE_HIGH + 62, []),
+			  ("VDIF from {r2dbe}.10GbE{n} should be received in {mark6}.{e}:{p}".format(
+				r2dbe=self.r2dbe, n=1, mark6=self.mark6.host, e=ifaces[1], p=ports[1]),
+				lambda: self.check_link_r2dbe_mark6(1), None, None, True,
+				self.CHECK_CODE_HIGH + 62, []),
+			]
+			# Run second part of checklist
+			self.do_checklist(checklist)
+
+			# Timestamp check on Mark6
+			self.tell("  Check timestamps of packets received on {me.mark6.host}".format(
+			  me=self))
+			# Compile checklist for both paths
+			_checklist = [
+			  ("packets received on {e} should be on-time " \
+			    "to within {off} seconds".format(m6=self.mark6.host, e=ifaces[0],
+			    p=ports[0], off=VV_MAX_OFFSET),
+			  lambda: self.mark6.vv_check(ifaces[0], ports[0]), None, None, True,
+			  self.CHECK_CODE_HIGH + 63),
+			  ("packets received on {e} should be on-time " \
+			    "to within {off} seconds".format(m6=self.mark6.host, e=ifaces[1],
+			    p=ports[1], off=VV_MAX_OFFSET),
+			  lambda: self.mark6.vv_check(ifaces[1], ports[1]), None, None, True,
+			  self.CHECK_CODE_HIGH + 63),
+			]
+			# Filter out paths for which link was not verified
+			checklist = []
+			for ii, cr in enumerate(self.check_results):
+				if cr.result:
+					checklist.append(_checklist[ii])
+				else:
+					self.tell("    Skipping on-time check for {e}, no link established".format(
+					  e=ifaces[ii]), exclaim=True)
+			# Run third part of checklist
+			self.do_checklist(checklist)
+
 class Station(CheckingDevice):
 
 	CHECK_CODE_HIGH = 1000
