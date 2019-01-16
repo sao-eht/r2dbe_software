@@ -43,7 +43,10 @@ if __name__ == "__main__":
 	tm.tell("\n############### Locating VEX to execute ###############\n")
 	all_vexes = get_vex_list()
 	if len(all_vexes) < 1:
-		tm.tell("No VEX files found in trigger area, exiting", exclaim=True)
+		tm.tell("No VEX files found in trigger area. It may be necessary to " \
+		  "manually copy the schedule to execute to the trigger area " \
+		  "'/srv/vexstore/trigger'. Ask the array scheduler where the " \
+		  "schedule file may be found.", exclaim=True)
 		sys.exit(0)
 	tm.tell("Found {0} VEX files in trigger area".format(len(all_vexes)))
 
