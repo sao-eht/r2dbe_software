@@ -48,11 +48,23 @@ if __name__ == "__main__":
 	# Do module dismount for each backend
 	for be in zip(*station.backends.items())[1]:
 		try:
-			be.logger.info("Unconfiguring Mark6 for this backend")
+			tm.tell("\n----------------------------------------------\n" \
+			  "Unconfiguring Mark6 for this backend")
+
+			# Mark6 needs to pass pre-config checks for this to work
+			be.mark6.pre_config_checks()
+			failed = 0
+			for cr in be.mark6.check_results:
+				if not cr.result:
+					failed += 1
+			if failed > 0:
+				tm.tell("{m6} failed {n} pre-config checks, cannot unconfigure".format(
+				  m6=be.mark6, n=failed), exclaim=True)
+				continue
 
 			# Find Mark6 for this backend
 			mark6 = be.mark6
-			mark6.tell("Unconfiguring")
+			mark6.tell("unconfiguring")
 
 			# Close modules if they are open
 			if mark6.compare_module_dual_status(s1="open"):
