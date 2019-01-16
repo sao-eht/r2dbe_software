@@ -50,6 +50,42 @@ class TerminalMessenger(object):
 				return False
 
 	@classmethod
+	def enter(cls, text, default=None, validate=None, exclaim=False):
+
+		# Make sure default is string
+		if default is not None:
+			default = str(default)
+
+		# Compile text to display
+		default_txt = " [{d}]".format(d=default) if default is not None else ""
+		msg = "{txt}{d}: ".format(txt=text, d=default_txt)
+		if exclaim:
+			msg = "{blue}{bold}{txt}{endc}".format(
+			  blue=cls.ATTN,bold=cls.BOLD,txt=msg,endc=cls.ENDC)
+
+		# Check if default passes validation
+		if validate is not None and default is not None:
+			if not validate(default):
+				raise ValueError("default does not pass validation")
+
+		while True:
+			# Capture user input
+			response = raw_input(msg)
+
+			# Check for default response, if allowed
+			if len(response) == 0:
+				if default is not None:
+					return str(default)
+				continue
+
+			# If validation function provided, use it
+			if validate is not None:
+				if not validate(response):
+					continue
+
+			return response
+
+	@classmethod
 	def select(cls, text_pre_opt, opt_dict, default_key=None, text_dict=None,
 	  text_post_opt="Please enter your selection [%s]: "):
 
