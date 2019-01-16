@@ -33,7 +33,7 @@ class ModuleStatus(object):
 		self.ndisks_dsc = int(qresp.params[3])
 		self.ndisks_reg = int(qresp.params[4])
 		self.gb_remain = 0 if not qresp.params[5].isdigit() else int(qresp.params[5])
-		self.gb_total = qresp.params[6]
+		self.gb_total = int(qresp.params[6])
 		self.status1 = qresp.params[7]
 		self.status2 = qresp.params[8]
 		self.type = qresp.params[9]
