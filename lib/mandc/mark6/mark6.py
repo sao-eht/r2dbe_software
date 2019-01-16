@@ -655,6 +655,8 @@ class Mark6(CheckingDevice):
 			args.extend(["new"])
 		sresp = self._daclient_set("mod_init",*args)
 
+		return sresp.cprc == CPLANE_SUCCESS
+
 	def group_new(self, grp=GROUP_REF):
 		sresp = self._daclient_set("group","new",grp)
 
