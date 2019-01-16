@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from subprocess import Popen, PIPE
 from struct import pack
 from tempfile import NamedTemporaryFile
+from time import sleep
 
 from ..primitives.base import IPAddress, MACAddress
 from ..primitives.devices import CheckingDevice
@@ -27,6 +28,7 @@ def _system_call(cmd):
 class ModuleStatus(object):
 
 	def __init__(self, qresp):
+		self._qresp = qresp
 		self.group_ref = qresp.params[0]
 		self.slot = int(qresp.params[1])
 		self.eMSN = qresp.params[2]
@@ -38,9 +40,31 @@ class ModuleStatus(object):
 		self.status2 = qresp.params[8]
 		self.type = qresp.params[9]
 
+	def __str__(self):
+		return str(self._qresp)
+
 	@property
 	def MSN(self):
 		return self.eMSN.split("/")[0]
+
+class ScanCheck(object):
+
+	def __init__(self, qresp):
+		self.group_ref = qresp.params[0]
+		self.scan_no = int(qresp.params[1])
+		self.label = qresp.params[2]
+		self.nstreams = int(qresp.params[3])
+		self.label = qresp.params[4]
+		self.status = qresp.params[5]
+		self.data_format = qresp.params[6]
+		self.start = datetime.strptime(qresp.params[7], "%Yy%jd%Hh%Mm%Ss")
+		self.duration = float(qresp.params[8])
+		self.size = float(qresp.params[9])
+		self.rate = float(qresp.params[10])
+		self.missing = int(qresp.params[11])
+
+	def __str__(self):
+		return str(self._qresp)
 
 class Response(object):
 
@@ -68,7 +92,10 @@ class QueryResponse(Response):
 
 	@classmethod
 	def from_string(cls, qs):
-		query, response = qs.split("?")
+		# Take care of possible '?' in the response, a la scan_check data? or time?
+		qsegments = qs.split("?")
+		query = qsegments[0]
+		response = "?".join(qsegments[1:])
 		qname = query.split("!")[1]
 		params = Response.string2params(response)
 
@@ -508,6 +535,61 @@ class Mark6(CheckingDevice):
 
 		return False
 
+	def record_check(self, duration=10, wait=30):
+		# Enqueue a record
+		scan = datetime.utcnow().strftime("%jd-%Hh%Mm%Ss")
+		exp = "recchk"
+		station = "00"
+
+		self.logger.info("Enqueued recording, exp={e} station={s} scan={n}".format(
+		  e=exp, s=station, n=scan))
+
+		rv = self.enqueue_record(duration, start=wait, exp=exp, station=station,
+		  scan=scan)
+
+		self.logger.debug("Enqueue_record returned {rv}".format(rv=rv))
+
+		if not rv:
+			return False
+
+		# Wait until after record is supposed to be finished, add 3s extra time
+		sleep(duration + wait + 3)
+
+		# Make sure recording is switched off
+		rv = self.dequeue_record()
+
+		self.logger.debug("Enqueue_record returned {rv}".format(rv=rv))
+
+		if not rv:
+			return False
+
+		# Do a scan check
+		name = "_".join([exp, station, scan])
+		sc = self.scan_check(name)
+
+		# Check a few properties of scan check result
+		if sc is None:
+			# If None returned, cplane error
+			self.logger.error("record_check failed: received cplane error code")
+			return False
+		if sc.duration < 0.99*duration:
+			# Expect data to span 99% of duration
+			self.logger.error("record_check failed: duration too short, " \
+			  "expected {e}s, found {d}s".format(e=duration, d=sc.duration))
+			return False
+		if sc.size < 0.99*2*R2DBE_PACKET_RATE*R2DBE_PAYLOAD_SIZE/1e9:
+			# Expect data to be 99% complete
+			self.logger.error("record_check failed: not enough data, " \
+			  "expected {e}GB, found {s}GB".format(s=sc.size,
+			  e=2*R2DBE_PACKET_RATE*R2DBE_PAYLOAD_SIZE/1e9))
+			return False
+
+		# Other checks that produce warnings, but still success
+		if sc.status not in ["OK"]:
+			self.logger.warning("scan_check status is '{s}'".format(s=sc.status))
+
+		return True
+
 	def get_iface_mac_ip(self, iface):
 		code_str = "" \
 		  "from netifaces import ifaddresses\n" \
@@ -657,6 +739,17 @@ class Mark6(CheckingDevice):
 		sresp = self._daclient_set("record", "off")
 
 		return sresp.cprc == CPLANE_SUCCESS
+
+	def scan_check(self, name):
+		qreply = self._daclient_query("scan_check", name)
+
+		if qreply.cprc == CPLANE_SUCCESS:
+			return ScanCheck(qreply)
+
+		self.logger.error("scan_check returned failure, cplane code {c}".format(
+		  c=qreply.cprc))
+
+		return None
 
 	def config_object(self, cfg):
 		self._station = cfg.station
