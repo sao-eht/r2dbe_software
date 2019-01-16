@@ -50,13 +50,21 @@ class TerminalMessenger(object):
 				return False
 
 	@classmethod
-	def select(cls, text_pre_opt, opt_dict, default_key=None,
+	def select(cls, text_pre_opt, opt_dict, default_key=None, text_dict=None,
 	  text_post_opt="Please enter your selection [%s]: "):
 
 		# Make text for option list
-		text_opt = "\n".join([
-		  "  [{key}] {val}".format(key=k, val=v) for k,v in opt_dict.items()
-		])
+		list_text_opt = []
+		for k, v in opt_dict.items():
+			# By default use string representation of value itself
+			txt = str(v)
+			# If we can use separate dictionary for text to display, do that instead
+			try:
+				txt = text_dict[k]
+			except Exception:
+				pass
+			list_text_opt.append("  [{k}] {v}".format(k=k, v=txt))
+		text_opt = "\n".join(list_text_opt)
 
 		# Compile option list
 		text_opt_list = "[]"
