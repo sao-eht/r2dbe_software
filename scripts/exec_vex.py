@@ -40,6 +40,7 @@ if __name__ == "__main__":
 	  ignore_device_classes=ignore_list)
 
 	# Get triggered schedules
+	tm.tell("\n############### Locating VEX to execute ###############\n")
 	all_vexes = get_vex_list()
 	if len(all_vexes) < 1:
 		tm.tell("No VEX files found in trigger area, exiting", exclaim=True)
@@ -47,44 +48,91 @@ if __name__ == "__main__":
 	tm.tell("Found {0} VEX files in trigger area".format(len(all_vexes)))
 
 	# Prune schedules that have end-times earlier than now
+	tm.tell("\nPruning schedules that end in the past")
 	now = datetime.utcnow().replace(tzinfo=UTC())
-	vexes = []
+	future_vexes = []
 	for v in all_vexes:
 		if v.stop < now:
-			tm.tell("Found schedule {v.name} for which end time has passed, skipping".format(
+			tm.tell("  - found schedule {v.name} for which end time has passed, skipping".format(
 			  v=v))
 		else:
-			vexes.append(v)
+			future_vexes.append(v)
 	# If no schedules that late enough end time, report and exit
-	if len(vexes) < 1:
+	if len(future_vexes) < 1:
 		tm.tell("Found no schedules that end in the future, exiting", exclaim=True)
 		sys.exit(0)
 
+	# Check for duplicates on md5sum
+	tm.tell("\nChecking for possible duplicate schedules")
+	unique_vexes = []
+	for v in future_vexes:
+		md5s = [u.md5sum for u in unique_vexes]
+		if v.md5sum not in md5s:
+			unique_vexes.append(v)
+		else:
+			copy = unique_vexes[md5s.index(v.md5sum)]
+			tm.tell("  - '{self}.vex' md5sum matches that of '{other}.vex', " \
+			  "not adding to list".format(self=v.basename, other=v.basename))
+
 	# Sort remainers according to start time
-	vexes = sorted(vexes)
-	# Display list and get selection
-	options = dict([(v.name,v) for v in vexes])
-	response = tm.select("\n\nAvailable schedules:\n\n" \
-	  "{0:10} {1:>7}  {2:>15}    {3:>15}  {4}\n".format(
-	    "", "md5sum", "start", "end", "description"),
-	  options, text_post_opt="\nEnter schedule to run (%s): ")
-	selection = options[response]
-	# Tell user the selected option
-	tm.tell("\n\nSelected schedule '{sched!r}'\n".format(sched=selection))
+	vexes = sorted(unique_vexes)
+
+	# Under normal circumstances, there should be exactly one VEX file left. If
+	# that is not the case, print a warning and then ask user to select the file
+	# to use from a list.
+	tm.tell("")
+	if len(vexes) == 0:
+		tm.tell("No executable VEX files found. It may be necessary to " \
+		  "manually copy the schedule to execute to the trigger area " \
+		  "'/srv/vexstore/trigger'. Ask the array scheduler where the " \
+		  "schedule file may be found.", exclaim=True)
+		sys.exit(0)
+	if len(vexes) > 1:
+		tm.tell("Multiple executable VEX files are available. Ask the array " \
+		  "scheduler for the md5sum of the correct schedule to execute, then " \
+		  "select it from the list below.", exclaim=True)
+		# Display list and get selection
+		texts =   ["{name:>6s}   " \
+		  "{basename:>12s}.vex   " \
+				 "{start:>15s}   " \
+				  "{stop:>15s}   " \
+			  "{description:s}".format(name=v.name, basename=v.basename,
+			  start=v.start.strftime("%b %d %H:%M:%S"),
+				stop=v.stop.strftime("%b %d %H:%M:%S"), description=v.description)
+		 for v in vexes]
+		options = dict([(repr(v),v) for v in vexes])
+		text_dict = dict([(repr(v),t) for v,t in zip(vexes, texts)])
+		response = tm.select("\nAvailable schedules:\n--------------------\n" \
+			  "{0:>9s}   " \
+			  "{1:>6s}   " \
+			 "{2:>16s}   " \
+			 "{3:>15s}   " \
+			 "{4:>15s}   " \
+			 "{5:s}\n".format("md5sum","name","filename","start","end","description"),
+		  options, text_post_opt="\nEnter schedule to run (%s): ", text_dict=text_dict)
+		vex = options[response]
+		# Tell user the selected option
+		tm.tell("\nSelected {b}.vex (md5sum={m})".format(b=vex.basename,
+		  m=vex.md5sum))
+	else:
+		vex = vexes[0]
+		tm.tell("Using {b}.vex, md5sum={m}".format(b=vex.basename,
+		  m=vex.md5sum))
 
 	# Set station
-	selection.schedule.set_station(station.station)
+	vex.schedule.set_station(station.station)
 
 	# List found scans
-	scans = selection.schedule.scans
+	scans = vex.schedule.scans
 	tm.tell("\nFound {n} scans for station {s}".format(n=len(scans),
-	  s=station.station))
+	  s=station.station), exclaim=len(scans)==0)
 	if len(scans) == 0:
 		sys.exit(0)
-	tm.tell("\n{0:>8}{1:>12}  {2:>14}  {3:>5}".format("","source","start",
-	  "duration"))
+	tm.tell("\n{scan:>8}   {start:>14}  {dur:>8}  {src:>12}".format(
+	  scan="scan #",start="start",dur="duration",src="source"))
 	for i, s in enumerate(scans):
-		tm.tell("  {i:3d} - {s}".format(i=i+1, s=s))
+		tm.tell("     {i:3d} - {start:>14}  {dur:>7}s  {src:>12}".format(i=i+1,
+		  src=s.source, start=s.start.strftime("%jd-%Hh%Mn%Ss"), dur=s.duration))
 
 	# Ask user to confirm they want to use this schedule:
 	if not tm.ask("\nContinue uploading schedule to recorders?"):
@@ -105,28 +153,28 @@ if __name__ == "__main__":
 
 		# Copy VEX
 		if mark6.copy_to(selection.filename, args.target_directory):
-			tm.tell("  - Copied {vex} to {m6}:{t}".format(vex=selection.name,
+			tm.tell("  - Copied {vex} to {m6}:{t}".format(vex=selection.filename,
 			  m6=mark6.host, t=args.target_directory))
 		else:
-			tm.tell("Failed to copy {vex} to {m6}:{t}, will not attempt " \
-			  "process this recorder any further".format(vex=selection.name,
+			tm.tell("Failed to copy {vex} to {m6}:{t}, will not attempt to " \
+			  "process this recorder any further".format(vex=selection.filename,
 			  m6=mark6.host, t=args.target_directory), exclaim=True)
 			continue
 
 		# VEX to XML
-		if mark6.vex2xml(args.target_directory, selection.name):
+		if mark6.vex2xml(args.target_directory, selection.basename):
 			tm.tell("  - Converted {vex}.vex to {vex}.xml on {m6}".format(
 			  vex=selection.name, m6=mark6.host))
 		else:
 			tm.tell("Failed to converted {vex}.vex to {vex}.xml on {m6}, " \
 			  "will not attempt to process this recorder any further".format(
-			  vex=selection.name, m6=mark6.host), exclaim=True)
+			  vex=selection.basename, m6=mark6.host), exclaim=True)
 			continue
 
 		# Start M6_CC
-		if mark6.m6cc(args.target_directory, selection.name):
+		if mark6.m6cc(args.target_directory, selection.basename):
 			tm.tell("  - Started schedule {vex}.xml on {m6}".format(
-			  vex=selection.name, m6=mark6.host))
+			  vex=selection.basename, m6=mark6.host))
 		else:
 			tm.tell("Failed to start schedule {vex}.xml on {m6}".format(
-			  vex=selection.name, m6=mark6.host), exclaim=True)
+			  vex=selection.basename, m6=mark6.host), exclaim=True)

@@ -54,12 +54,7 @@ class VexExperiment(object):
 		self._stop = stop.replace(tzinfo=UTC())
 
 	def __str__(self):
-		date_fmt = "%b %d %H:%M:%S"
-		time_range = "{begin} -- {end}".format(
-		  begin=self.start.strftime(date_fmt),
-		  end=self.stop.strftime(date_fmt))
-
-		return "{rng}, {desc}".format(rng=time_range, desc=self.description)
+		return self.name
 
 	@property
 	def description(self):
@@ -88,8 +83,7 @@ class VexScan(object):
 		self._stop = start + timedelta(seconds=duration)
 
 	def __str__(self):
-		return "{me.source:>12}, {b}, {me.duration:>4}s".format(
-		  me=self, b=self.start.strftime("%jd-%Hh%Mm%Ss"))
+		return "{b}".format(b=self.start.strftime("%jd-%Hh%Mm%Ss"))
 
 	def __cmp__(self, other):
 		ours = self.start
@@ -172,6 +166,8 @@ class VexSchedule(object):
 
 class Vex(object):
 
+	NUM_MD5_SHOW = 7
+
 	def __init__(self, vex_dict):
 		# Add some internal attributes
 		self._source = vex_dict["filename"]
@@ -196,16 +192,20 @@ class Vex(object):
 		return 1
 
 	def __str__(self):
-		return "{md5}, {me.experiment}".format(me=self,md5=self.md5sum[:7])
+		return str(self.experiment)
 
 	def __repr__(self):
-		return self.name
+		return self.md5sum[:self.NUM_MD5_SHOW]
 
 	@classmethod
 	def from_file(cls, filename):
 		vex_dict = vexparser(filename)
 
 		return cls(vex_dict)
+
+	@property
+	def basename(self):
+		return self._source.split(os.sep)[-1].split(os.extsep)[0]
 
 	@property
 	def filename(self):
@@ -227,7 +227,11 @@ class Vex(object):
 	def schedule(self):
 		return self._schedule
 
-	# forward .name, .start and .stop from VexExperiment
+	# forward .name, .description, .start and .stop from VexExperiment
+	@property
+	def description(self):
+		return self.experiment.description
+
 	@property
 	def name(self):
 		return self.experiment.name
