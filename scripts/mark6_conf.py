@@ -47,10 +47,16 @@ if __name__ == "__main__":
 	# Do module dismount for each backend
 	for be in zip(*station.backends.items())[1]:
 		try:
+			tm.tell("\n----------------------------------------------\n" \
+			  "Configuring {m6} for {be}".format(m6=be.mark6.host, be=be))
 			be.logger.info("Configuring Mark6 for this backend")
 
 			# Find Mark6 for this backend
-			be.setup_mark6()
+			if be.setup_mark6():
+				tm.tell("  {m6} configuration successful".format(m6=be.mark6.host))
+			else:
+				tm.tell("  {m6} configuration failed".format(m6=be.mark6.host),
+				  exclaim=True)
 
 		except Exception as ex:
 			tm.tell(
