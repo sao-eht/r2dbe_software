@@ -4,7 +4,7 @@ import logging
 import os.path
 import sys
 
-from mandc.conf import BACKEND_OPTION_BDC
+from mandc.conf import BACKEND_OPTION_BDC, DEFAULT_CONFIG_FILE
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging
 
@@ -15,6 +15,8 @@ if __name__ == "__main__":
 	import argparse
 
 	parser = argparse.ArgumentParser(description="Configure backend devices")
+	parser.add_argument("-c", "--config-file", dest="conf", metavar="CONFIG", default=DEFAULT_CONFIG_FILE, type=str,
+	  help="backend configuration file (default is {0})".format(DEFAULT_CONFIG_FILE))
 	parser.add_argument("--exclude-bdc", action="store_true", default=False,
 	  help="exclude BDC from configuration")
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
@@ -23,8 +25,6 @@ if __name__ == "__main__":
 	  help="set logging to level DEBUG")
 	parser.add_argument("-y", "--yes-all", action="store_true", default=False,
 	  help="answer yes to all questions (e.g. device config overwrite)")
-	parser.add_argument("conf", metavar="CONFIG", type=str,
-	  help="backend configuration file")
 	args = parser.parse_args()
 
 	# Configure logging

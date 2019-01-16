@@ -8,6 +8,7 @@ import sys
 from traceback import format_exception, format_exception_only
 
 from mandc import Station
+from mandc.conf import DEFAULT_CONFIG_FILE
 from mandc.utils import TerminalMessenger, configure_logging
 
 _default_log_basename = os.path.extsep.join([os.path.basename(os.path.splitext(__file__)[0]), "log"])
@@ -18,14 +19,14 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description="Configure all Mark6 devices in the configuration",
 	  epilog="Mount modules, add and commit input streams, open modules")
+	parser.add_argument("-c", "--config-file", dest="conf", metavar="CONFIG", default=DEFAULT_CONFIG_FILE, type=str,
+	  help="backend configuration file (default is {0})".format(DEFAULT_CONFIG_FILE))
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
 	  help="write log messages to FILE in addition to stdout (default is $HOME/log/{0})".format(_default_log_basename))
 	parser.add_argument("-v", "--verbose", action="store_true", default=False,
 	  help="set logging to level DEBUG")
 	parser.add_argument("-y", "--yes-all", action="store_true", default=False,
 	  help="answer yes to all questions (e.g. device config overwrite)")
-	parser.add_argument("conf", metavar="CONF", type=str,
-	  help="backend configuration file")
 	args = parser.parse_args()
 
 	# Configure logging

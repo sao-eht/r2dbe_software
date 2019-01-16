@@ -6,7 +6,7 @@ import sys
 
 from datetime import datetime, timedelta
 
-from mandc.conf import BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, get_vex_list
+from mandc.conf import BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, get_vex_list, DEFAULT_CONFIG_FILE
 from mandc import Station
 from mandc.utils import TerminalMessenger, configure_logging, UTC
 
@@ -17,14 +17,14 @@ if __name__ == "__main__":
 	import argparse
 
 	parser = argparse.ArgumentParser(description="Execute a triggered vexfile")
+	parser.add_argument("-c", "--config-file", dest="conf", metavar="CONFIG", default=DEFAULT_CONFIG_FILE, type=str,
+	  help="backend configuration file (default is {0})".format(DEFAULT_CONFIG_FILE))
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
 	  help="write log messages to FILE in addition to stdout (default is $HOME/log/{0})".format(_default_log_basename))
 	parser.add_argument("-t", "--target-directory", metavar="DIR", type=str, default="/home/oper/remote_ctrl",
 	  help="location on Mark6 where schedules are copied and executed (default is '/home/oper/remote_ctrl')")
 	parser.add_argument("-v", "--verbose", action="store_true", default=False,
 	  help="set logging to level DEBUG")
-	parser.add_argument("conf", metavar="CONFIG", type=str,
-	  help="backend configuration file")
 	args = parser.parse_args()
 
 	# Configure logging
