@@ -41,7 +41,7 @@ class ModuleStatus(object):
 		self.type = qresp.params[9]
 
 	def __str__(self):
-		return str(self._qresp)
+		return ":".join(self._qresp.params)
 
 	@property
 	def MSN(self):
@@ -64,7 +64,7 @@ class ScanCheck(object):
 		self.missing = int(qresp.params[11])
 
 	def __str__(self):
-		return str(self._qresp)
+		return ":".join(self._qresp.params)
 
 class Response(object):
 
