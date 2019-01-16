@@ -262,6 +262,13 @@ class Mark6(CheckingDevice):
 
 	CHECK_CODE_HIGH = 5000
 
+	@classmethod
+	def valid_msn(cls, msn):
+		# Only check length should be 8, ignore other rules (apparently not enforced)
+		if len(msn) != 8:
+			return False
+		return True
+
 	def __init__(self, host, mark6_user=MARK6_DEFAULT_USER, parent_logger=module_logger, **kwargs):
 		super(Mark6, self).__init__(host, **kwargs)
 		self.user = mark6_user
