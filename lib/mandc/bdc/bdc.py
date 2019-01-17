@@ -417,6 +417,9 @@ class BDC(CheckingDevice):
 		# If device config does not match object, or ask response said to overwrite
 		self.config_device(bc)
 
+		# Give device time to adapt
+		sleep(0.1)
+
 	def pre_config_checks(self):
 
 		# Do super's pre-config checks first
