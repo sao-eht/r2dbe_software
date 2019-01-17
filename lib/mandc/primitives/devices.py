@@ -1,6 +1,10 @@
+import logging
+
 import os
 
 from ..utils import TerminalMessenger
+
+module_logger = logging.getLogger(__name__)
 
 class CheckResult(object):
 
@@ -88,8 +92,26 @@ class CheckingDevice(object):
 	def is_available(cls, identifier, tell=None, critical=True):
 		"""Check if device is available."""
 
-		# Ping to see if device available
-		response = os.system("ping -c 1 " + identifier + " > /dev/null")
+		# Try 3 times if necessary
+		tries_left = 3
+		while tries_left > 0:
+			# Ping to see if device available
+			response = os.system("ping -c 1 " + identifier + " > /dev/null")
+
+			# Stop as soon as successful
+			if response == 0:
+				break
+
+			tries_left = tries_left-1
+
+			# Log warning if possible
+			if tries_left > 0:
+				module_logger.warning(
+				  "ping {idn} failed, {n} attempt(s) left".format(
+				  idn=identifier, n=tries_left))
+			else:
+				module_logger.error("ping {idn} failed".format(
+				  idn=identifier))
 
 		# Check the result
 		result =  CheckResult("   - {name} {desc}".format(name=identifier, desc="should be available"),
