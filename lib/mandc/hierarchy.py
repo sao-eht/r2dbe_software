@@ -160,7 +160,7 @@ class Backend(CheckingDevice):
 
 		return True
 
-	def alc(self, digital_only=True, use_tell=False):
+	def alc(self, digital_only=True, use_tell=False, auto_accept=False):
 		from r2dbe import R2DBE_IDEAL_2BIT_THRESHOLD
 		from numpy import log10
 
@@ -210,8 +210,19 @@ class Backend(CheckingDevice):
 			self.logger.info("Recommended BDC attenuator change to {host!r} IF{n} is {d:+.1f} dB".format(
 			  host=self.r2dbe, n=path_n, d=d_pwr_dB))
 
+			min_auto_step = 10.0
+			abort_analog = False
+			if not auto_accept and d_pwr_dB < min_auto_step:
+				if not self.ask("Required attenuator change will increase " \
+				  "input power by {d:+.1f} dB. Do you want to continue with " \
+				  "attenuator adjustment?".format(d=-d_pwr_dB), exclaim=True):
+					# Abort attenuator change
+					abort_analog = True
+					self.tell("  attenuator adjustment aborted, only setting "\
+					"2-bit threshold.")
+
 			# If change is less than 0.5 dB, or if no analog adjustment requested...
-			if digital_only or abs(d_pwr_dB) < 0.5:
+			if digital_only or abort_analog or abs(d_pwr_dB) < 0.5:
 				# ...report result and move on
 				self.logger.info(
 				  "Set 2-bit threshold for {host!r} IF #{n} to {t}".format(
