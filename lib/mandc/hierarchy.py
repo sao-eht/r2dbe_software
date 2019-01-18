@@ -212,7 +212,7 @@ class Backend(CheckingDevice):
 
 			min_auto_step = 10.0
 			abort_analog = False
-			if not auto_accept and d_pwr_dB < min_auto_step:
+			if not digital_only and not auto_accept and d_pwr_dB < min_auto_step:
 				if not self.ask("Required attenuator change will increase " \
 				  "input power by {d:+.1f} dB. Do you want to continue with " \
 				  "attenuator adjustment?".format(d=-d_pwr_dB), exclaim=True):
