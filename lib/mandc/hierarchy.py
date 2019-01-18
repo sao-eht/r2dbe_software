@@ -247,7 +247,7 @@ class Backend(CheckingDevice):
 			  p=pol, s=subband, host=self.bdc, v=att))
 
 			# Redo 2-bit threshold
-			self.r2dbe.set_2bit_threshold(path_n)
+			self.r2dbe.set_2bit_threshold(path_n, wait=2)
 
 			# Get 2-bit threshold and report
 			th = self.r2dbe.get_2bit_threshold(path_n)
