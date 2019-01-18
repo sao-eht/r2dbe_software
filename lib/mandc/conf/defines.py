@@ -1,4 +1,4 @@
-DEFAULT_CONFIG_FILE = "/home/oper/backend.conf"
+DEFAULT_CONFIG_FILE = "/etc/backend.conf"
 
 GLOBAL_SECTION = "global"
 GLOBAL_OPTION_STATION = "station"
