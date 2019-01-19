@@ -4,6 +4,8 @@ from argparse import ArgumentParser
 from datetime import datetime, time, timedelta
 from numpy import loadtxt, int32, unique, array, polyfit
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 DEFAULT_LOG_FILE = '/var/log/r2dbe/pps-drift.log'

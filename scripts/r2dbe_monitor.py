@@ -5,6 +5,8 @@ import logging
 import os.path
 import sys
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as mpl
 from datetime import datetime
 from matplotlib.pyplot import figure, ion, pause
