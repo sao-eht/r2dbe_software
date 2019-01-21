@@ -11,7 +11,7 @@ from config import ConfigError
 
 from conf import StationConfigParser, ValidationError, ParsingError, \
   BACKEND_OPTION_BDC, BACKEND_OPTION_R2DBE, BACKEND_OPTION_MARK6
-from mark6 import Mark6
+from mark6 import Mark6, ModuleStateError
 from primitives import IFSignal, SignalPath, EthRoute, ModSubGroup, CheckingDevice
 from r2dbe import R2DBE_INPUTS, R2DBE_NUM_INPUTS, R2dbe
 from utils import ExceptingThread
@@ -376,8 +376,13 @@ class Backend(CheckingDevice):
 			self.tell("Encountered {ce} pre-config critical errors for {m6}, aborting setup for backend {be}".format(
 			  ce=ce_count, m6=self.mark6.host, be=self), exclaim=True)
 			return False
-		self.mark6.setup(self.station, [sp.ethrt for sp in self.signal_paths],
-		  [sp.modsg for sp in self.signal_paths])
+		try:
+			self.mark6.setup(self.station, [sp.ethrt for sp in self.signal_paths],
+			  [sp.modsg for sp in self.signal_paths])
+		except ModuleStateError as mse:
+			self.tell("Could not put modules in {m6} in required state, aborting setup for backend {be}.".format(
+			  m6=self.mark6.host, be=self))
+			return False
 		self.mark6.post_config_checks()
 		ce_count = 0
 		for cr in self.mark6.check_results:

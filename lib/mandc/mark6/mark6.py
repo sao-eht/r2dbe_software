@@ -25,6 +25,9 @@ def _system_call(cmd):
 	# Return call return code, stdout, and stderr as 3-tuple
 	return (rc, stdout, stderr)
 
+class ModuleStateError(RuntimeError):
+	pass
+
 class ModuleStatus(object):
 
 	def __init__(self, qresp):
@@ -804,8 +807,10 @@ class Mark6(CheckingDevice):
 
 		# Modules should now be in closed:unprotected state
 		if not self.compare_module_dual_status(s1="closed",s2="unprotected"):
-			self.logger.error("Unable to put modules in closed:unprotected state, aborting setup")
-			raise RuntimeError("Failed to put modules in closed:unprotected state")
+			self.logger.error("Unable to put modules in closed:unprotected state, aborting setup. " \
+			  "Try restarting dplane and cplane, then try again.")
+			raise ModuleStateError("Failed to put modules in closed:unprotected state. " \
+			  "Try restarting dplane and cplane, then try again.")
 
 		# If there are any input streams, delete them
 		self.logger.info("Removing existing input streams if any")
@@ -824,8 +829,10 @@ class Mark6(CheckingDevice):
 
 		# Check if modules are open:ready
 		if not self.compare_module_dual_status(s1="open",s2="ready"):
-			self.logger.error("Unable to put modules in open:ready state, setup failed")
-			raise RuntimeError("Failed to put modules in open:ready state")
+			self.logger.error("Unable to put modules in open:ready state, setup failed. " \
+			  "Try restarting dplane and cplane, then try again.")
+			raise ModuleStateError("Failed to put modules in open:ready state. " \
+			  "Try restarting dplane and cplane, then try again.")
 
 	def setup(self, station, inputs, outputs):
 
