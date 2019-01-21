@@ -50,3 +50,5 @@ if __name__ == "__main__":
 
 	# Set up
 	station.setup()
+
+	tm.tell("\n############### Done configuring backend ###############")

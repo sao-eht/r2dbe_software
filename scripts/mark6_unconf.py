@@ -47,7 +47,8 @@ if __name__ == "__main__":
 	station = Station.from_file(args.conf, tell=tm.tell, ask=ask_proxy,
 	  ignore_device_classes=["bdc","r2dbe"])
 
-	# Do module dismount for each backend
+	# Do Mark6 un-setup for each backend
+	tm.tell("\n############### Unconfiguring Mark6s ###############")
 	for be in zip(*station.backends.items())[1]:
 		if args.mark6_list is not None and be.mark6.host not in args.mark6_list:
 			tm.tell("\nSkipping {m6} unconfigure (not in -m option host-list)".format(
@@ -109,3 +110,5 @@ if __name__ == "__main__":
 			logger.error(
 			  "Encountered an exception '{ex}' during Mark6 unconfigure of backend '{be}', traceback follows:\n{tb}".format(
 			  ex=exc_str, be=be, tb="".join(exc_lines)))
+
+	tm.tell("\n############### Done unconfiguring Mark6s ###############")

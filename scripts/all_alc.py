@@ -48,6 +48,9 @@ if __name__ == "__main__":
 	  ignore_device_classes=ignore_list)
 
 	# Do ALC for each backend
+	tm.tell("\n############### Performing ALC ###############")
 	for be in zip(*station.backends.items())[1]:
 		be.alc(digital_only=args.exclude_bdc, use_tell=True,
 		  auto_accept=args.force_auto_attn)
+
+	tm.tell("\n############### Done performing ALC ###############")
