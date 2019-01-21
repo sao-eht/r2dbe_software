@@ -23,6 +23,8 @@ if __name__ == "__main__":
 	  help="backend configuration file (default is {0})".format(DEFAULT_CONFIG_FILE))
 	parser.add_argument("-l", "--log-file", dest="log", metavar="FILE", type=str, default=_default_log,
 	  help="write log messages to FILE in addition to stdout (default is $HOME/log/{0})".format(_default_log_basename))
+	parser.add_argument("-m", "--mark6-list", metavar="HOST", nargs="+",
+	  help="perform configuration for given list of Mark6 units only")
 	parser.add_argument("-v", "--verbose", action="store_true", default=False,
 	  help="set logging to level DEBUG")
 	parser.add_argument("-y", "--yes-all", action="store_true", default=False,
@@ -47,6 +49,10 @@ if __name__ == "__main__":
 
 	# Do module dismount for each backend
 	for be in zip(*station.backends.items())[1]:
+		if args.mark6_list is not None and be.mark6.host not in args.mark6_list:
+			tm.tell("\nSkipping {m6} unconfigure (not in -m option host-list)".format(
+			  m6=be.mark6.host))
+			continue
 		try:
 			tm.tell("\n----------------------------------------------\n" \
 			  "Unconfiguring Mark6 for this backend")
