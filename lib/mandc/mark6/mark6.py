@@ -621,6 +621,8 @@ class Mark6(CheckingDevice):
 		  "iface = ''\n" \
 		  "for x in interfaces():\n" \
 		  "    itf = ifaddresses(x)\n" \
+		  "    if 17 not in itf.keys() or 2 no in itf.keys():\n" \
+		  "        continue\n" \
 		  "    mac = itf[17][0]['addr']\n" \
 		  "    ip = itf[2][0]['addr']\n" \
 		  "    if mac == '{mac}' and ip == '{ip}':\n" \
