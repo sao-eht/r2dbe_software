@@ -427,11 +427,14 @@ class Mark6(CheckingDevice):
 		return rc == 0
 
 	def m6cc(self, path, filename):
-		m6cc = "screen -Ldm {p}/{e}".format(p=EXEC_M6CC_PATH,e=EXEC_M6CC)
+		m6cc = "{p}/{e}".format(p=EXEC_M6CC_PATH,e=EXEC_M6CC)
+		log1 = "{rp}/stdout.{rf}".format(rp=path, rf=filename)
+		log2= "{rp}/stderr.{rf}".format(rp=path, rf=filename)
 
 		# Do call
-		rc, so, se = self._system_call("cd {rp}; {m6cc} -f {rf}.xml".format(
-		  rp=path, m6cc=m6cc, rf=filename))
+		rc, so, se = self._system_call(
+		  "cd {rp}; nohup {m6cc} -f {rf}.xml >{l1} 2>{l2} </dev/null &".format(
+		  rp=path, m6cc=m6cc, rf=filename, l1=log1, l2=log2))
 		if rc != 0:
 			self.logger.error("Failed to execute M6_CC for file {rf} in {rp} on {u}@{h}, " \
 			  "received error {c} with message '{m}'".format(rf=filename,
