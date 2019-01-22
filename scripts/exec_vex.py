@@ -155,29 +155,29 @@ if __name__ == "__main__":
 			continue
 
 		# Copy VEX
-		if mark6.copy_to(selection.filename, args.target_directory):
-			tm.tell("  - Copied {vex} to {m6}:{t}".format(vex=selection.filename,
+		if mark6.copy_to(vex.filename, args.target_directory):
+			tm.tell("  - Copied {vex} to {m6}:{t}".format(vex=vex.filename,
 			  m6=mark6.host, t=args.target_directory))
 		else:
 			tm.tell("Failed to copy {vex} to {m6}:{t}, will not attempt to " \
-			  "process this recorder any further".format(vex=selection.filename,
+			  "process this recorder any further".format(vex=vex.filename,
 			  m6=mark6.host, t=args.target_directory), exclaim=True)
 			continue
 
 		# VEX to XML
-		if mark6.vex2xml(args.target_directory, selection.basename):
+		if mark6.vex2xml(args.target_directory, vex.basename):
 			tm.tell("  - Converted {vex}.vex to {vex}.xml on {m6}".format(
-			  vex=selection.name, m6=mark6.host))
+			  vex=vex.name, m6=mark6.host))
 		else:
 			tm.tell("Failed to converted {vex}.vex to {vex}.xml on {m6}, " \
 			  "will not attempt to process this recorder any further".format(
-			  vex=selection.basename, m6=mark6.host), exclaim=True)
+			  vex=vex.basename, m6=mark6.host), exclaim=True)
 			continue
 
 		# Start M6_CC
-		if mark6.m6cc(args.target_directory, selection.basename):
+		if mark6.m6cc(args.target_directory, vex.basename):
 			tm.tell("  - Started schedule {vex}.xml on {m6}".format(
-			  vex=selection.basename, m6=mark6.host))
+			  vex=vex.basename, m6=mark6.host))
 		else:
 			tm.tell("Failed to start schedule {vex}.xml on {m6}".format(
-			  vex=selection.basename, m6=mark6.host), exclaim=True)
+			  vex=vex.basename, m6=mark6.host), exclaim=True)
