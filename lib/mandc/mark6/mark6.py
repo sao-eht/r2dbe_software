@@ -405,12 +405,21 @@ class Mark6(CheckingDevice):
 
 		return rc == 0
 
-	def vex2xml(self, path, filename):
+	def vex2xml(self, path, filename, station=None):
 		v2x = "{p}/{e}".format(p=EXEC_VEX2XML_PATH, e=EXEC_VEX2XML)
+
+		if station is None:
+			# Try to use station from object config
+			self.logger.info("No station set in vex2xml, trying object_config")
+			try:
+				station = self.object_config.station
+			except AttributeError:
+				self.logger.error("No object_config.station, cannot run vex2xml")
+				return False
 
 		# Do call
 		rc, so, se = self._system_call("cd {rp}; {v2x} -f {rf}.vex -s {s}".format(
-		  rp=path, v2x=v2x, rf=filename, s=self.device_config.station))
+		  rp=path, v2x=v2x, rf=filename, s=station))
 		if rc != 0:
 			self.logger.error("Failed to execute vex2xml.py for file {rf} in {rp} on {u}@{h}, " \
 			  "received error {c} with message '{m}'".format(rf=filename,
@@ -418,7 +427,7 @@ class Mark6(CheckingDevice):
 
 		# Check XML created
 		rc, so, se = self._system_call("ls {rp}/{rf}.xml".format(
-		  rp=path, v2x=v2x, rf=filename, s=self.device_config.station))
+		  rp=path, v2x=v2x, rf=filename))
 		if rc != 0:
 			self.logger.error("Check for existence of {rp}/{rf}.xml failed, " \
 			  "received error {c} with message '{m}'".format(rf=filename,

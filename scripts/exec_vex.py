@@ -165,7 +165,7 @@ if __name__ == "__main__":
 			continue
 
 		# VEX to XML
-		if mark6.vex2xml(args.target_directory, vex.basename):
+		if mark6.vex2xml(args.target_directory, vex.basename, station=be.station):
 			tm.tell("  - Converted {vex}.vex to {vex}.xml on {m6}".format(
 			  vex=vex.name, m6=mark6.host))
 		else:
