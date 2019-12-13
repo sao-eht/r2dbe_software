@@ -614,10 +614,9 @@ class Mark6(CheckingDevice):
 
 	def get_iface_mac_ip(self, iface):
 		code_str = "" \
-		  "from netifaces import ifaddresses\n" \
-		  "iface = ifaddresses('{iface}')\n" \
-		  "mac = iface[17][0]['addr']\n" \
-		  "ip = iface[2][0]['addr']".format(iface=iface)
+		  "import os\n" \
+		  "mac = os.popen('/sbin/ifconfig %s | egrep HWaddr | egrep -o \"([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\"').read().strip()\n" \
+		  "ip = os.popen('/sbin/ifconfig %s | egrep -o \"inet addr.+Bcast\" | egrep -o \"([0-9]{1,3}\.){3}[0-9]{1,3}\"').read().strip()" % (iface, iface)
 
 		# Get call result
 		res, rv = self._safe_python_call(code_str, "mac", "ip")
