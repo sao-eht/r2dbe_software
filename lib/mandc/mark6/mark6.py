@@ -484,11 +484,11 @@ class Mark6(CheckingDevice):
 	  vtp_bytes=R2DBE_VTP_SIZE, vdif_bytes=R2DBE_VDIF_SIZE):
 		vdifsize = vtp_bytes + vdif_bytes
 		code_str = "" \
-		  "from netifaces import ifaddresses\n" \
 		  "from socket import socket, AF_INET, SOCK_DGRAM\n" \
 		  "from datetime import datetime\n" \
-		  "iface = ifaddresses('{iface}')\n" \
-		  "sock_addr = (iface[2][0]['addr'], {portno})\n" \
+		  "import os\n" \
+		  "ip = os.popen('/sbin/ifconfig {iface} | egrep -o \"inet addr.+Bcast\" | egrep -o \"([0-9]{{1,3}}\.){{3}}[0-9]{{1,3}}\"').read().strip()\n" \
+		  "sock_addr = (ip, {portno})\n" \
 		  "sock = socket(AF_INET, SOCK_DGRAM)\n" \
 		  "sock.settimeout({timeout})\n" \
 		  "sock.bind(sock_addr)\n" \
@@ -628,14 +628,17 @@ class Mark6(CheckingDevice):
 
 	def get_mac_ip_iface(self, mac, ip):
 		code_str = "" \
-		  "from netifaces import interfaces, ifaddresses\n" \
+		  "import os\n" \
 		  "iface = ''\n" \
-		  "for x in interfaces():\n" \
-		  "    itf = ifaddresses(x)\n" \
-		  "    if 17 not in itf.keys() or 2 not in itf.keys():\n" \
+		  "for line in os.popen('ifconfig').read().splitlines():\n" \
+		  "    if line and line[0].isspace():\n" \
 		  "        continue\n" \
-		  "    mac = itf[17][0]['addr']\n" \
-		  "    ip = itf[2][0]['addr']\n" \
+		  "    words = line.split()\n" \
+		  "    if not words:\n" \
+		  "        continue\n" \
+		  "    x = words[0]\n" \
+		  "    mac = os.popen('/sbin/ifconfig %s | egrep HWaddr | egrep -o \"([0-9a-fA-F]{{2}}:){{5}}[0-9a-fA-F]{{2}}\"' % x).read().strip()\n" \
+		  "    ip = os.popen('/sbin/ifconfig %s | egrep -o \"inet addr.+Bcast\" | egrep -o \"([0-9]{{1,3}}\.){{3}}[0-9]{{1,3}}\"' % x).read().strip()\n" \
 		  "    if mac == '{mac}' and ip == '{ip}':\n" \
 		  "        iface = x".format(mac=mac, ip=ip)
 
